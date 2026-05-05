@@ -54,6 +54,14 @@ const ensurePhotoQuota = (team: Team): void => {
   }
 };
 
+const teamS3Prefix = (teamId: string): string => `teams/${teamId}/`;
+
+const ensureKeyBelongsToTeam = (s3Key: string, teamId: string): void => {
+  if (!s3Key.startsWith(teamS3Prefix(teamId))) {
+    throw new HttpError('Chave S3 inválida para este time', 400);
+  }
+};
+
 export const mediaService = {
   async getUploadUrl(
     team: Team,
@@ -61,7 +69,7 @@ export const mediaService = {
   ): Promise<{ uploadUrl: string; s3Key: string }> {
     ensurePhotoQuota(team);
     const safeName = sanitizeFileName(input.fileName);
-    const s3Key = `teams/${team.teamId}/${uuid()}-${safeName}`;
+    const s3Key = `${teamS3Prefix(team.teamId)}${uuid()}-${safeName}`;
     const command = new PutObjectCommand({
       Bucket: BUCKET,
       Key: s3Key,
@@ -78,7 +86,8 @@ export const mediaService = {
     ownerId: string,
     input: CreateMediaInput,
   ): Promise<Media> {
-    ensurePhotoQuota(team);
+    ensureKeyBelongsToTeam(input.s3Key, team.teamId);
+    await teamService.reserveAndIncrementPhoto(team);
     const now = new Date().toISOString();
     const media: Media = {
       mediaId: uuid(),
@@ -91,14 +100,18 @@ export const mediaService = {
       caption: input.caption,
       createdAt: now,
     };
-    await docClient.send(
-      new PutCommand({
-        TableName: TABLES.MEDIA,
-        Item: media,
-        ConditionExpression: 'attribute_not_exists(mediaId)',
-      }),
-    );
-    await teamService.incrementPhotoCount(team.teamId);
+    try {
+      await docClient.send(
+        new PutCommand({
+          TableName: TABLES.MEDIA,
+          Item: media,
+          ConditionExpression: 'attribute_not_exists(mediaId)',
+        }),
+      );
+    } catch (err) {
+      await teamService.decrementPhotoCount(team.teamId);
+      throw err;
+    }
     return media;
   },
 
@@ -115,13 +128,14 @@ export const mediaService = {
     return enrichWithUrls((result.Items ?? []) as Media[]);
   },
 
-  async listByGame(gameId: string): Promise<MediaWithUrl[]> {
+  async listByGame(teamId: string, gameId: string): Promise<MediaWithUrl[]> {
     const result = await docClient.send(
       new QueryCommand({
         TableName: TABLES.MEDIA,
         IndexName: 'gameId-createdAt-index',
         KeyConditionExpression: 'gameId = :gameId',
-        ExpressionAttributeValues: { ':gameId': gameId },
+        FilterExpression: 'teamId = :teamId',
+        ExpressionAttributeValues: { ':gameId': gameId, ':teamId': teamId },
         ScanIndexForward: false,
       }),
     );
