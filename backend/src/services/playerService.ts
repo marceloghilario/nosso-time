@@ -1,4 +1,5 @@
-import { PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { QueryCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
+import { TransactionCanceledException } from '@aws-sdk/client-dynamodb';
 import { v4 as uuid } from 'uuid';
 import { docClient, TABLES } from '../utils/dynamo';
 import { HttpError } from '../utils/response';
@@ -10,6 +11,9 @@ export interface CreatePlayerInput {
   number: number;
   characteristics?: string;
 }
+
+const numberReservationKey = (teamId: string, number: number): string =>
+  `jersey#${teamId}#${number}`;
 
 export const playerService = {
   async listByTeam(teamId: string): Promise<Player[]> {
@@ -25,10 +29,6 @@ export const playerService = {
   },
 
   async create(teamId: string, input: CreatePlayerInput): Promise<Player> {
-    const existing = await this.listByTeam(teamId);
-    if (existing.some((p) => p.number === input.number)) {
-      throw new HttpError('Número de camisa já em uso neste time', 409);
-    }
     const now = new Date().toISOString();
     const player: Player = {
       playerId: uuid(),
@@ -40,13 +40,40 @@ export const playerService = {
       createdAt: now,
       updatedAt: now,
     };
-    await docClient.send(
-      new PutCommand({
-        TableName: TABLES.PLAYERS,
-        Item: player,
-        ConditionExpression: 'attribute_not_exists(playerId)',
-      }),
-    );
+    try {
+      await docClient.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            {
+              Put: {
+                TableName: TABLES.PLAYERS,
+                Item: player,
+                ConditionExpression: 'attribute_not_exists(playerId)',
+              },
+            },
+            {
+              Put: {
+                TableName: TABLES.PLAYERS,
+                Item: {
+                  playerId: numberReservationKey(teamId, input.number),
+                  reservedAt: now,
+                  reservedBy: player.playerId,
+                },
+                ConditionExpression: 'attribute_not_exists(playerId)',
+              },
+            },
+          ],
+        }),
+      );
+    } catch (err) {
+      if (err instanceof TransactionCanceledException) {
+        const reasons = err.CancellationReasons ?? [];
+        if (reasons[1]?.Code === 'ConditionalCheckFailed') {
+          throw new HttpError('Número de camisa já em uso neste time', 409);
+        }
+      }
+      throw err;
+    }
     return player;
   },
 };

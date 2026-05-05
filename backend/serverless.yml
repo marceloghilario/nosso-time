@@ -53,6 +53,8 @@ provider:
             - dynamodb:DeleteItem
             - dynamodb:Query
             - dynamodb:Scan
+            - dynamodb:TransactWriteItems
+            - dynamodb:ConditionCheckItem
           Resource:
             - !GetAtt TeamsTable.Arn
             - !GetAtt PlayersTable.Arn

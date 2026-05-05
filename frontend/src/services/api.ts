@@ -89,11 +89,6 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     signal: options.signal,
   });
 
-  if (response.status === 401) {
-    handle401();
-    throw new ApiError('Sessão expirada. Faça login novamente.', 401);
-  }
-
   let payload: unknown = null;
   const text = await response.text();
   if (text) {
@@ -102,6 +97,14 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     } catch {
       payload = null;
     }
+  }
+
+  if (response.status === 401 && options.auth !== false) {
+    handle401();
+    const message = isErrorBody(payload)
+      ? payload.error
+      : 'Sessão expirada. Faça login novamente.';
+    throw new ApiError(message, 401);
   }
 
   if (!response.ok) {
