@@ -1,0 +1,344 @@
+service: nosso-time
+
+frameworkVersion: '3'
+
+plugins:
+  - serverless-plugin-typescript
+  - serverless-offline
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+  memorySize: 256
+  timeout: 15
+  environment:
+    TEAMS_TABLE: ${self:service}-teams-${self:provider.stage}
+    PLAYERS_TABLE: ${self:service}-players-${self:provider.stage}
+    GAMES_TABLE: ${self:service}-games-${self:provider.stage}
+    MEDIA_TABLE: ${self:service}-media-${self:provider.stage}
+    PHOTOS_BUCKET: ${self:service}-photos-${self:provider.stage}-${aws:accountId}
+    COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+    COGNITO_CLIENT_ID: !Ref CognitoUserPoolClient
+  httpApi:
+    cors:
+      allowedOrigins:
+        - '*'
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      allowCredentials: false
+    authorizers:
+      cognitoAuthorizer:
+        type: jwt
+        identitySource: $request.header.Authorization
+        issuerUrl: !Sub 'https://cognito-idp.${aws:region}.amazonaws.com/${CognitoUserPool}'
+        audience:
+          - !Ref CognitoUserPoolClient
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource:
+            - !GetAtt TeamsTable.Arn
+            - !GetAtt PlayersTable.Arn
+            - !GetAtt GamesTable.Arn
+            - !GetAtt MediaTable.Arn
+            - !Sub '${TeamsTable.Arn}/index/*'
+            - !Sub '${PlayersTable.Arn}/index/*'
+            - !Sub '${GamesTable.Arn}/index/*'
+            - !Sub '${MediaTable.Arn}/index/*'
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+          Resource:
+            - !Sub 'arn:aws:s3:::${self:provider.environment.PHOTOS_BUCKET}/*'
+        - Effect: Allow
+          Action:
+            - cognito-idp:SignUp
+            - cognito-idp:InitiateAuth
+            - cognito-idp:ConfirmSignUp
+            - cognito-idp:AdminConfirmSignUp
+          Resource: !GetAtt CognitoUserPool.Arn
+
+functions:
+  signup:
+    handler: src/functions/auth/signup.handler
+    events:
+      - httpApi:
+          path: /auth/signup
+          method: post
+  login:
+    handler: src/functions/auth/login.handler
+    events:
+      - httpApi:
+          path: /auth/login
+          method: post
+
+  createTeam:
+    handler: src/functions/teams/create.handler
+    events:
+      - httpApi:
+          path: /teams
+          method: post
+          authorizer:
+            name: cognitoAuthorizer
+  listTeams:
+    handler: src/functions/teams/list.handler
+    events:
+      - httpApi:
+          path: /teams
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+  getTeam:
+    handler: src/functions/teams/get.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+
+  createPlayer:
+    handler: src/functions/players/create.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/players
+          method: post
+          authorizer:
+            name: cognitoAuthorizer
+  listPlayers:
+    handler: src/functions/players/list.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/players
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+
+  createGame:
+    handler: src/functions/games/create.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/games
+          method: post
+          authorizer:
+            name: cognitoAuthorizer
+  listGames:
+    handler: src/functions/games/list.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/games
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+
+  getMediaUploadUrl:
+    handler: src/functions/media/getUploadUrl.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/media/upload-url
+          method: post
+          authorizer:
+            name: cognitoAuthorizer
+  createMedia:
+    handler: src/functions/media/create.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/media
+          method: post
+          authorizer:
+            name: cognitoAuthorizer
+  listMediaByTeam:
+    handler: src/functions/media/listByTeam.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/media
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+  listMediaByGame:
+    handler: src/functions/media/listByGame.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/games/{gameId}/media
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+
+resources:
+  Resources:
+    TeamsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.TEAMS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: teamId
+            AttributeType: S
+          - AttributeName: ownerId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: teamId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: ownerId-index
+            KeySchema:
+              - AttributeName: ownerId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+    PlayersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.PLAYERS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: playerId
+            AttributeType: S
+          - AttributeName: teamId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: playerId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: teamId-index
+            KeySchema:
+              - AttributeName: teamId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+    GamesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.GAMES_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: gameId
+            AttributeType: S
+          - AttributeName: teamId
+            AttributeType: S
+          - AttributeName: date
+            AttributeType: S
+        KeySchema:
+          - AttributeName: gameId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: teamId-date-index
+            KeySchema:
+              - AttributeName: teamId
+                KeyType: HASH
+              - AttributeName: date
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    MediaTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.MEDIA_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: mediaId
+            AttributeType: S
+          - AttributeName: teamId
+            AttributeType: S
+          - AttributeName: gameId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: mediaId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: teamId-createdAt-index
+            KeySchema:
+              - AttributeName: teamId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: gameId-createdAt-index
+            KeySchema:
+              - AttributeName: gameId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    PhotosBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.PHOTOS_BUCKET}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders: ['*']
+              AllowedMethods: [GET, PUT, POST, HEAD]
+              AllowedOrigins: ['*']
+              MaxAge: 3000
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+
+    CognitoUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: ${self:service}-users-${self:provider.stage}
+        UsernameAttributes:
+          - email
+        AutoVerifiedAttributes:
+          - email
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireLowercase: true
+            RequireNumbers: true
+            RequireSymbols: false
+            RequireUppercase: true
+        Schema:
+          - Name: email
+            AttributeDataType: String
+            Mutable: false
+            Required: true
+
+    CognitoUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: ${self:service}-client-${self:provider.stage}
+        UserPoolId: !Ref CognitoUserPool
+        GenerateSecret: false
+        ExplicitAuthFlows:
+          - ALLOW_USER_PASSWORD_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
+
+  Outputs:
+    UserPoolId:
+      Value: !Ref CognitoUserPool
+    UserPoolClientId:
+      Value: !Ref CognitoUserPoolClient
+    PhotosBucketName:
+      Value: !Ref PhotosBucket
+    HttpApiUrl:
+      Value: !GetAtt HttpApi.ApiEndpoint
