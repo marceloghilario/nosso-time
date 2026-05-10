@@ -342,5 +342,4 @@ resources:
       Value: !Ref CognitoUserPoolClient
     PhotosBucketName:
       Value: !Ref PhotosBucket
-    HttpApiUrl:
-      Value: !GetAtt HttpApi.ApiEndpoint
+    # HttpApiUrl is provided automatically by Serverless for the implicit HttpApi.
