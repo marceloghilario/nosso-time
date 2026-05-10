@@ -18,7 +18,14 @@ export default function PlayerList({ players }: Props) {
     );
   }
 
-  const sorted = [...players].sort((a, b) => a.number - b.number);
+  const sorted = [...players].sort((a, b) => {
+    if (a.number === undefined && b.number === undefined) {
+      return a.name.localeCompare(b.name);
+    }
+    if (a.number === undefined) return 1;
+    if (b.number === undefined) return -1;
+    return a.number - b.number;
+  });
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -29,8 +36,14 @@ export default function PlayerList({ players }: Props) {
             className="px-4 py-3 flex items-center gap-3"
           >
             <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 font-semibold flex items-center justify-center shrink-0">
-              <Hash className="w-3 h-3 mr-0.5" />
-              <span>{player.number}</span>
+              {player.number !== undefined ? (
+                <>
+                  <Hash className="w-3 h-3 mr-0.5" />
+                  <span>{player.number}</span>
+                </>
+              ) : (
+                <User className="w-4 h-4" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-gray-900 truncate">{player.name}</p>

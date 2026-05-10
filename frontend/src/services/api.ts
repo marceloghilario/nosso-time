@@ -138,7 +138,7 @@ export interface CreateTeamInput {
 export interface CreatePlayerInput {
   name: string;
   position: PlayerPosition;
-  number: number;
+  number?: number;
   characteristics?: string;
 }
 

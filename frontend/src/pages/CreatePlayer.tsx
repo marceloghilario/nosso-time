@@ -13,7 +13,7 @@ export default function CreatePlayer() {
   const { teamId = '' } = useParams<{ teamId: string }>();
   const [name, setName] = useState('');
   const [position, setPosition] = useState<PlayerPosition>('ATACANTE');
-  const [number, setNumber] = useState('10');
+  const [number, setNumber] = useState('');
   const [characteristics, setCharacteristics] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { showSuccess, showError } = useToast();
@@ -21,10 +21,15 @@ export default function CreatePlayer() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const numberValue = Number.parseInt(number, 10);
-    if (Number.isNaN(numberValue) || numberValue < 1 || numberValue > 99) {
-      showError('Número de camisa deve ser entre 1 e 99');
-      return;
+    const trimmed = number.trim();
+    let numberValue: number | undefined;
+    if (trimmed.length > 0) {
+      const parsed = Number.parseInt(trimmed, 10);
+      if (Number.isNaN(parsed) || parsed < 1 || parsed > 99) {
+        showError('Número de camisa deve ser entre 1 e 99');
+        return;
+      }
+      numberValue = parsed;
     }
     setSubmitting(true);
     try {
@@ -84,14 +89,14 @@ export default function CreatePlayer() {
               </select>
             </label>
             <label className="block">
-              <span className="text-sm font-medium text-gray-700">Número *</span>
+              <span className="text-sm font-medium text-gray-700">Número</span>
               <input
                 type="number"
-                required
                 min={1}
                 max={99}
                 value={number}
                 onChange={(e) => setNumber(e.target.value)}
+                placeholder="Opcional"
                 className="mt-1 w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </label>

@@ -1,4 +1,8 @@
-import { QueryCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  PutCommand,
+  QueryCommand,
+  TransactWriteCommand,
+} from '@aws-sdk/lib-dynamodb';
 import { TransactionCanceledException } from '@aws-sdk/client-dynamodb';
 import { v4 as uuid } from 'uuid';
 import { docClient, TABLES } from '../utils/dynamo';
@@ -8,7 +12,7 @@ import type { Player, PlayerPosition } from '../models';
 export interface CreatePlayerInput {
   name: string;
   position: PlayerPosition;
-  number: number;
+  number?: number;
   characteristics?: string;
 }
 
@@ -40,6 +44,16 @@ export const playerService = {
       createdAt: now,
       updatedAt: now,
     };
+    if (input.number === undefined) {
+      await docClient.send(
+        new PutCommand({
+          TableName: TABLES.PLAYERS,
+          Item: player,
+          ConditionExpression: 'attribute_not_exists(playerId)',
+        }),
+      );
+      return player;
+    }
     try {
       await docClient.send(
         new TransactWriteCommand({

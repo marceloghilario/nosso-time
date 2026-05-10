@@ -33,7 +33,7 @@ export interface Player {
   teamId: string;
   name: string;
   position: PlayerPosition;
-  number: number;
+  number?: number;
   characteristics?: string;
   createdAt: string;
   updatedAt: string;

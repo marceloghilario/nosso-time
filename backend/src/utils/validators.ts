@@ -28,7 +28,7 @@ export const PlayerPositionSchema = z.enum([
 export const CreatePlayerSchema = z.object({
   name: z.string().min(1, 'Nome do jogador é obrigatório').max(100),
   position: PlayerPositionSchema,
-  number: z.number().int().min(1).max(99),
+  number: z.number().int().min(1).max(99).optional(),
   characteristics: z.string().max(500).optional(),
 });
 
