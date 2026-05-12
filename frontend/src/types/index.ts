@@ -88,6 +88,46 @@ export interface AuthSession {
   email: string;
 }
 
+export const FORMATION_SCHEMES = [
+  '4-4-2',
+  '4-3-3',
+  '3-5-2',
+  '4-2-3-1',
+  '5-3-2',
+  '3-4-3',
+  '4-1-4-1',
+] as const;
+
+export type FormationScheme = (typeof FORMATION_SCHEMES)[number];
+
+export interface FormationPlayerPosition {
+  playerId: string;
+  playerName: string;
+  playerNumber?: number;
+  x: number;
+  y: number;
+}
+
+export interface Formation {
+  formationId: string;
+  teamId: string;
+  teamName: string;
+  name: string;
+  scheme: FormationScheme;
+  isActive: boolean;
+  playerPositions: FormationPlayerPosition[];
+  shareToken: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicFormationView {
+  teamName: string;
+  name: string;
+  scheme: FormationScheme;
+  playerPositions: FormationPlayerPosition[];
+}
+
 export type ApiSuccess<T> = { success: true; data: T };
 export type ApiFailure = { success: false; error: string };
 export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;

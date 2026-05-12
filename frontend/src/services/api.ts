@@ -1,6 +1,8 @@
 import { API_URL, AUTH_STORAGE_KEY } from '../utils/constants';
 import type {
   AuthSession,
+  Formation,
+  FormationScheme,
   Game,
   GameResult,
   GameStatus,
@@ -8,6 +10,7 @@ import type {
   MediaType,
   Player,
   PlayerPosition,
+  PublicFormationView,
   PublicTeamDetail,
   PublicTeamSummary,
   Team,
@@ -183,6 +186,19 @@ export interface CreateMediaInput {
   caption?: string;
 }
 
+export interface FormationPositionInput {
+  playerId: string;
+  x: number;
+  y: number;
+}
+
+export interface SaveFormationInput {
+  name: string;
+  scheme: FormationScheme;
+  playerPositions: FormationPositionInput[];
+  isActive: boolean;
+}
+
 export const api = {
   signup: (input: SignupInput) =>
     request<{ email: string }>('/auth/signup', {
@@ -260,4 +276,31 @@ export const api = {
       throw new ApiError('Falha ao enviar o arquivo para o S3', response.status);
     }
   },
+
+  listFormations: (teamId: string) =>
+    request<Formation[]>(`/teams/${teamId}/formations`),
+  getActiveFormation: (teamId: string) =>
+    request<Formation>(`/teams/${teamId}/formations/active`),
+  createFormation: (teamId: string, input: SaveFormationInput) =>
+    request<Formation>(`/teams/${teamId}/formations`, {
+      method: 'POST',
+      body: input,
+    }),
+  updateFormation: (
+    teamId: string,
+    formationId: string,
+    input: SaveFormationInput,
+  ) =>
+    request<Formation>(`/teams/${teamId}/formations/${formationId}`, {
+      method: 'PUT',
+      body: input,
+    }),
+  deleteFormation: (teamId: string, formationId: string) =>
+    request<{ message: string }>(`/teams/${teamId}/formations/${formationId}`, {
+      method: 'DELETE',
+    }),
+  getPublicFormation: (shareToken: string) =>
+    request<PublicFormationView>(`/formacoes/${shareToken}`, {
+      auth: false,
+    }),
 };
