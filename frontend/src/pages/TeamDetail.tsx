@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Camera, Plus, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Camera, LayoutGrid, Plus, Users } from 'lucide-react';
 import { api } from '../services/api';
 import { useApi } from '../hooks/useApi';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -57,6 +57,15 @@ export default function TeamDetail() {
               >
                 Plano {team.plan}
               </span>
+            </div>
+            <div className="mt-4">
+              <Link
+                to={`/teams/${teamId}/tatica`}
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Montagem tática
+              </Link>
             </div>
           </div>
 

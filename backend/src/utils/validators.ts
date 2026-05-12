@@ -1,5 +1,6 @@
 import { z, ZodError } from 'zod';
 import { HttpError } from './response';
+import { FORMATION_SCHEMES } from '../models';
 
 export const SignupSchema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -70,6 +71,25 @@ export const CreateMediaSchema = z.object({
   gameId: z.string().min(1).optional(),
   caption: z.string().max(500).optional(),
 });
+
+export const FormationSchemeSchema = z.enum(FORMATION_SCHEMES);
+
+export const FormationPositionSchema = z.object({
+  playerId: z.string().min(1),
+  x: z.number().min(0).max(100),
+  y: z.number().min(0).max(100),
+});
+
+export const CreateFormationSchema = z.object({
+  name: z.string().min(1, 'Nome da formação é obrigatório').max(100),
+  scheme: FormationSchemeSchema,
+  playerPositions: z
+    .array(FormationPositionSchema)
+    .max(30, 'Muitos jogadores na formação'),
+  isActive: z.boolean().optional(),
+});
+
+export const UpdateFormationSchema = CreateFormationSchema;
 
 export const parseBody = <T>(schema: z.ZodType<T>, body: string | null | undefined): T => {
   let parsed: unknown;
