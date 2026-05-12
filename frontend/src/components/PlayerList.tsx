@@ -1,6 +1,6 @@
 import { Hash, User } from 'lucide-react';
 import type { Player } from '../types';
-import { PLAYER_POSITION_LABELS } from '../utils/constants';
+import { PLAYER_POSITION_LABELS, comparePlayers } from '../utils/constants';
 
 interface Props {
   players: Player[];
@@ -18,14 +18,7 @@ export default function PlayerList({ players }: Props) {
     );
   }
 
-  const sorted = [...players].sort((a, b) => {
-    if (a.number === undefined && b.number === undefined) {
-      return a.name.localeCompare(b.name);
-    }
-    if (a.number === undefined) return 1;
-    if (b.number === undefined) return -1;
-    return a.number - b.number;
-  });
+  const sorted = [...players].sort(comparePlayers);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
