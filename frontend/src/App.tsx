@@ -10,6 +10,7 @@ import CreateTeam from './pages/CreateTeam';
 import TeamDetail from './pages/TeamDetail';
 import CreatePlayer from './pages/CreatePlayer';
 import CreateGame from './pages/CreateGame';
+import GameDetail from './pages/GameDetail';
 import UploadPhoto from './pages/UploadPhoto';
 
 function HomeRedirect() {
@@ -39,6 +40,7 @@ export default function App() {
               <Route path="/teams/:teamId" element={<TeamDetail />} />
               <Route path="/teams/:teamId/jogadores/novo" element={<CreatePlayer />} />
               <Route path="/teams/:teamId/jogos/novo" element={<CreateGame />} />
+              <Route path="/teams/:teamId/jogos/:gameId" element={<GameDetail />} />
               <Route path="/teams/:teamId/upload" element={<UploadPhoto />} />
             </Route>
 

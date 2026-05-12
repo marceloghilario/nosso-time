@@ -151,6 +151,21 @@ export interface CreateGameInput {
   result?: GameResult;
 }
 
+export interface GameGoalInput {
+  playerId: string;
+  minute?: number;
+}
+
+export interface UpdateGameInput {
+  date: string;
+  time: string;
+  location: string;
+  opponent: string;
+  status: GameStatus;
+  result?: GameResult;
+  goals?: GameGoalInput[];
+}
+
 export interface UploadUrlInput {
   contentType: string;
   fileName: string;
@@ -201,6 +216,13 @@ export const api = {
   createGame: (teamId: string, input: CreateGameInput) =>
     request<Game>(`/teams/${teamId}/games`, {
       method: 'POST',
+      body: input,
+    }),
+  getGame: (teamId: string, gameId: string) =>
+    request<Game>(`/teams/${teamId}/games/${gameId}`),
+  updateGame: (teamId: string, gameId: string, input: UpdateGameInput) =>
+    request<Game>(`/teams/${teamId}/games/${gameId}`, {
+      method: 'PUT',
       body: input,
     }),
 

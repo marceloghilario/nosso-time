@@ -39,6 +39,11 @@ export const GameResultSchema = z.object({
   scoreAgainst: z.number().int().min(0).max(99),
 });
 
+export const GameGoalSchema = z.object({
+  playerId: z.string().min(1, 'Jogador é obrigatório'),
+  minute: z.number().int().min(0).max(200).optional(),
+});
+
 export const CreateGameSchema = z
   .object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida (YYYY-MM-DD)'),
@@ -51,6 +56,35 @@ export const CreateGameSchema = z
   .refine(
     (val) => val.status !== 'REALIZADO' || val.result !== undefined,
     { message: 'Resultado é obrigatório para jogos realizados', path: ['result'] },
+  );
+
+export const UpdateGameSchema = z
+  .object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida (YYYY-MM-DD)'),
+    time: z.string().regex(/^\d{2}:\d{2}$/, 'Horário inválido (HH:MM)'),
+    location: z.string().min(1, 'Local é obrigatório').max(200),
+    opponent: z.string().min(1, 'Adversário é obrigatório').max(100),
+    status: GameStatusSchema,
+    result: GameResultSchema.optional(),
+    goals: z.array(GameGoalSchema).max(99).optional(),
+  })
+  .refine(
+    (val) => val.status !== 'REALIZADO' || val.result !== undefined,
+    { message: 'Resultado é obrigatório para jogos realizados', path: ['result'] },
+  )
+  .refine(
+    (val) => val.status === 'REALIZADO' || !val.goals || val.goals.length === 0,
+    { message: 'Gols só podem ser informados em jogos realizados', path: ['goals'] },
+  )
+  .refine(
+    (val) =>
+      !val.result ||
+      !val.goals ||
+      val.goals.length <= val.result.scoreFor,
+    {
+      message: 'Quantidade de gols não pode ser maior que o placar do time',
+      path: ['goals'],
+    },
   );
 
 export const MediaTypeSchema = z.enum(['PHOTO', 'VIDEO']);
