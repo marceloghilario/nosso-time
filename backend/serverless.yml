@@ -186,6 +186,22 @@ functions:
           method: get
           authorizer:
             name: cognitoAuthorizer
+  getGame:
+    handler: src/functions/games/get.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/games/{gameId}
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+  updateGame:
+    handler: src/functions/games/update.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/games/{gameId}
+          method: put
+          authorizer:
+            name: cognitoAuthorizer
 
   getMediaUploadUrl:
     handler: src/functions/media/getUploadUrl.handler

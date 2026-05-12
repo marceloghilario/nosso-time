@@ -10,6 +10,7 @@ import CreateTeam from './pages/CreateTeam';
 import TeamDetail from './pages/TeamDetail';
 import CreatePlayer from './pages/CreatePlayer';
 import CreateGame from './pages/CreateGame';
+import GameDetail from './pages/GameDetail';
 import UploadPhoto from './pages/UploadPhoto';
 import Explore from './pages/Explore';
 import PublicTeamDetail from './pages/PublicTeamDetail';
@@ -44,6 +45,7 @@ export default function App() {
               <Route path="/teams/:teamId" element={<TeamDetail />} />
               <Route path="/teams/:teamId/jogadores/novo" element={<CreatePlayer />} />
               <Route path="/teams/:teamId/jogos/novo" element={<CreateGame />} />
+              <Route path="/teams/:teamId/jogos/:gameId" element={<GameDetail />} />
               <Route path="/teams/:teamId/upload" element={<UploadPhoto />} />
               <Route path="/teams/:teamId/tatica" element={<Tactica />} />
               <Route path="/explorar" element={<Explore />} />
