@@ -23,6 +23,7 @@ import type {
   Player,
 } from '../types';
 import { FORMATION_SLOTS } from '../utils/formationSchemes';
+import { comparePlayers } from '../utils/constants';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useToast } from '../components/Toast';
 import { TacticalBoard } from '../components/tactical/TacticalBoard';
@@ -56,8 +57,8 @@ const toPlacedFromPlayer = (
   y: clamp(y),
 });
 
-const sortPlayersByName = (players: Player[]): Player[] =>
-  [...players].sort((a, b) => a.name.localeCompare(b.name));
+const sortPlayersForDisplay = (players: Player[]): Player[] =>
+  [...players].sort(comparePlayers);
 
 const reflowToScheme = (
   current: PlacedPosition[],
@@ -95,7 +96,7 @@ const fillEmptyFromScheme = (
   scheme: FormationScheme,
 ): PlacedPosition[] => {
   const slots = FORMATION_SLOTS[scheme];
-  const sorted = sortPlayersByName(players);
+  const sorted = sortPlayersForDisplay(players);
   return sorted.slice(0, slots.length).map((player, idx) =>
     toPlacedFromPlayer(player, slots[idx].x, slots[idx].y),
   );
@@ -174,7 +175,7 @@ export default function Tactica() {
   );
 
   const availablePlayers = useMemo(
-    () => sortPlayersByName(players.filter((p) => !placedIds.has(p.playerId))),
+    () => sortPlayersForDisplay(players.filter((p) => !placedIds.has(p.playerId))),
     [players, placedIds],
   );
 

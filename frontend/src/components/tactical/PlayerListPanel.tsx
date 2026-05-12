@@ -1,7 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { Hash, User } from 'lucide-react';
 import type { Player } from '../../types';
-import { PLAYER_POSITION_LABELS } from '../../utils/constants';
+import { PLAYER_POSITION_LABELS, comparePlayers } from '../../utils/constants';
 
 interface Props {
   players: Player[];
@@ -15,9 +15,10 @@ export default function PlayerListPanel({ players }: Props) {
       </p>
     );
   }
+  const sorted = [...players].sort(comparePlayers);
   return (
     <ul className="space-y-1.5">
-      {players.map((p) => (
+      {sorted.map((p) => (
         <DraggablePlayer key={p.playerId} player={p} />
       ))}
     </ul>
