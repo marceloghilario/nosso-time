@@ -11,6 +11,8 @@ import TeamDetail from './pages/TeamDetail';
 import CreatePlayer from './pages/CreatePlayer';
 import CreateGame from './pages/CreateGame';
 import UploadPhoto from './pages/UploadPhoto';
+import Tactica from './pages/Tactica';
+import PublicFormationPage from './pages/PublicFormation';
 
 function HomeRedirect() {
   const { isAuthenticated } = useAuth();
@@ -26,6 +28,7 @@ export default function App() {
             <Route path="/" element={<HomeRedirect />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/formacoes/:shareToken" element={<PublicFormationPage />} />
 
             <Route
               element={
@@ -40,6 +43,7 @@ export default function App() {
               <Route path="/teams/:teamId/jogadores/novo" element={<CreatePlayer />} />
               <Route path="/teams/:teamId/jogos/novo" element={<CreateGame />} />
               <Route path="/teams/:teamId/upload" element={<UploadPhoto />} />
+              <Route path="/teams/:teamId/tatica" element={<Tactica />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
