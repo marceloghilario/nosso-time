@@ -4,7 +4,6 @@ import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Camera,
-  Goal,
   Plus,
   Save,
   Trash2,
@@ -47,7 +46,6 @@ export default function GameDetail() {
     [teamId, gameId],
   );
 
-  const [editing, setEditing] = useState(false);
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
@@ -68,8 +66,10 @@ export default function GameDetail() {
     [playersReq.data],
   );
 
-  const startEditing = () => {
-    if (!game) return;
+  const gameSnapshotKey = game ? `${game.gameId}:${game.updatedAt}` : null;
+  const [hydratedFor, setHydratedFor] = useState<string | null>(null);
+  if (game && gameSnapshotKey && gameSnapshotKey !== hydratedFor) {
+    setHydratedFor(gameSnapshotKey);
     setDate(game.date);
     setTime(game.time);
     setLocation(game.location);
@@ -84,10 +84,17 @@ export default function GameDetail() {
         : '',
     );
     setGoals((game.goals ?? []).map(toDraft));
-    setEditing(true);
-  };
+  }
 
-  const cancelEditing = () => setEditing(false);
+  const handleScoreChange = (
+    setter: (value: string) => void,
+    value: string,
+  ) => {
+    setter(value);
+    if (value !== '' && status !== 'REALIZADO') {
+      setStatus('REALIZADO');
+    }
+  };
 
   const addGoal = () => {
     setGoals((prev) => [
@@ -106,30 +113,37 @@ export default function GameDetail() {
     setGoals((prev) => prev.filter((g) => g.key !== key));
   };
 
+  const parsedScoreFor = scoreFor === '' ? null : Number.parseInt(scoreFor, 10);
+  const parsedScoreAgainst =
+    scoreAgainst === '' ? null : Number.parseInt(scoreAgainst, 10);
+
   const handleSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const result =
-        status === 'REALIZADO'
-          ? {
-              scoreFor: Number.parseInt(scoreFor, 10),
-              scoreAgainst: Number.parseInt(scoreAgainst, 10),
-            }
-          : undefined;
-      if (status === 'REALIZADO') {
-        if (
-          !result ||
-          Number.isNaN(result.scoreFor) ||
-          Number.isNaN(result.scoreAgainst)
-        ) {
-          showError('Informe o placar do jogo');
+      const effectiveStatus: GameStatus =
+        status === 'REALIZADO' ||
+        parsedScoreFor !== null ||
+        parsedScoreAgainst !== null
+          ? 'REALIZADO'
+          : 'AGENDADO';
+
+      let result:
+        | { scoreFor: number; scoreAgainst: number }
+        | undefined;
+      if (effectiveStatus === 'REALIZADO') {
+        const sf = parsedScoreFor ?? 0;
+        const sa = parsedScoreAgainst ?? 0;
+        if (Number.isNaN(sf) || Number.isNaN(sa) || sf < 0 || sa < 0) {
+          showError('Informe um placar válido');
           setSaving(false);
           return;
         }
+        result = { scoreFor: sf, scoreAgainst: sa };
       }
+
       const payloadGoals =
-        status === 'REALIZADO'
+        effectiveStatus === 'REALIZADO'
           ? goals
               .filter((g) => g.playerId)
               .map((g) => {
@@ -146,12 +160,11 @@ export default function GameDetail() {
         time,
         location,
         opponent,
-        status,
+        status: effectiveStatus,
         result,
         goals: payloadGoals,
       });
       showSuccess('Jogo atualizado');
-      setEditing(false);
       gameReq.refetch();
     } catch (err) {
       showError(err instanceof ApiError ? err.message : 'Erro ao salvar jogo');
@@ -194,16 +207,16 @@ export default function GameDetail() {
     }
   };
 
-  const playerById = useMemo(() => {
-    const map = new Map<string, Player>();
-    for (const p of players) map.set(p.playerId, p);
-    return map;
-  }, [players]);
-
   const formattedDate = (d: string, t: string): string => {
+    if (!d) return '';
     const [y, m, day] = d.split('-');
     return `${day}/${m}/${y} às ${t}`;
   };
+
+  const goalCountForScore = goals.filter((g) => g.playerId).length;
+  const scoreForFinal = parsedScoreFor ?? 0;
+  const goalsExceedScore =
+    status === 'REALIZADO' && goalCountForScore > scoreForFinal;
 
   return (
     <div className="max-w-3xl mx-auto space-y-5">
@@ -224,7 +237,7 @@ export default function GameDetail() {
 
       {game && (
         <>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-3">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h2 className="text-xl font-bold text-gray-900 truncate">
@@ -236,59 +249,154 @@ export default function GameDetail() {
               </div>
               <span
                 className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                  game.status === 'REALIZADO'
+                  status === 'REALIZADO'
                     ? 'bg-primary-100 text-primary-700'
                     : 'bg-amber-100 text-amber-700'
                 }`}
               >
-                {GAME_STATUS_LABELS[game.status]}
+                {GAME_STATUS_LABELS[status]}
               </span>
             </div>
-            {game.status === 'REALIZADO' && game.result && (
-              <div className="text-3xl font-extrabold text-gray-900">
-                {game.result.scoreFor}{' '}
-                <span className="text-gray-400">x</span>{' '}
-                {game.result.scoreAgainst}
-              </div>
-            )}
-            {game.goals && game.goals.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
-                  <Goal className="w-3.5 h-3.5" />
-                  Autores dos gols
-                </p>
-                <ul className="mt-1.5 space-y-0.5">
-                  {game.goals.map((g, idx) => (
-                    <li
-                      key={`${g.playerId}-${idx}`}
-                      className="text-sm text-gray-700"
-                    >
-                      • {g.playerName}
-                      {g.minute !== undefined ? ` (${g.minute}')` : ''}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {!editing && (
-              <div>
-                <button
-                  type="button"
-                  onClick={startEditing}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Editar jogo
-                </button>
-              </div>
-            )}
           </div>
 
-          {editing && (
-            <form
-              onSubmit={handleSave}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4"
-            >
-              <h3 className="font-semibold text-gray-900">Editar jogo</h3>
+          <form
+            onSubmit={handleSave}
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-5"
+          >
+            <section className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                Placar
+              </h3>
+              <div className="flex items-center justify-center gap-3 sm:gap-5">
+                <div className="text-center">
+                  <p className="text-[11px] font-medium text-gray-500 mb-1 truncate max-w-[8rem] sm:max-w-[12rem]">
+                    Meu time
+                  </p>
+                  <input
+                    type="number"
+                    min={0}
+                    max={99}
+                    inputMode="numeric"
+                    placeholder="—"
+                    value={scoreFor}
+                    onChange={(e) =>
+                      handleScoreChange(setScoreFor, e.target.value)
+                    }
+                    className="w-20 sm:w-24 rounded-lg border border-gray-200 bg-white px-2 py-3 text-center text-3xl font-extrabold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <span className="text-2xl font-bold text-gray-300 self-end pb-3">
+                  x
+                </span>
+                <div className="text-center">
+                  <p className="text-[11px] font-medium text-gray-500 mb-1 truncate max-w-[8rem] sm:max-w-[12rem]">
+                    {game.opponent}
+                  </p>
+                  <input
+                    type="number"
+                    min={0}
+                    max={99}
+                    inputMode="numeric"
+                    placeholder="—"
+                    value={scoreAgainst}
+                    onChange={(e) =>
+                      handleScoreChange(setScoreAgainst, e.target.value)
+                    }
+                    className="w-20 sm:w-24 rounded-lg border border-gray-200 bg-white px-2 py-3 text-center text-3xl font-extrabold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-center text-gray-400">
+                Ao preencher o placar, o jogo é marcado como{' '}
+                <span className="font-semibold">Realizado</span>{' '}
+                automaticamente.
+              </p>
+            </section>
+
+            <section className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Autores dos gols
+                </h3>
+                <button
+                  type="button"
+                  onClick={addGoal}
+                  disabled={players.length === 0}
+                  className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <Plus className="w-3 h-3" />
+                  Adicionar gol
+                </button>
+              </div>
+              {players.length === 0 && (
+                <p className="text-xs text-gray-500">
+                  Cadastre jogadores no time para registrar autores de gols.
+                </p>
+              )}
+              {goals.length === 0 && players.length > 0 && (
+                <p className="text-xs text-gray-500">
+                  Nenhum autor registrado. Gols sem autor (ex.: gol contra)
+                  podem ficar só no placar acima.
+                </p>
+              )}
+              <ul className="space-y-2">
+                {goals.map((g) => (
+                  <li
+                    key={g.key}
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-2"
+                  >
+                    <select
+                      value={g.playerId}
+                      onChange={(e) =>
+                        updateGoal(g.key, { playerId: e.target.value })
+                      }
+                      className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="" disabled>
+                        Selecione um jogador
+                      </option>
+                      {players.map((p) => (
+                        <option key={p.playerId} value={p.playerId}>
+                          {p.number !== undefined ? `#${p.number} ` : ''}
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min={0}
+                      max={200}
+                      placeholder="min"
+                      value={g.minute}
+                      onChange={(e) =>
+                        updateGoal(g.key, { minute: e.target.value })
+                      }
+                      className="w-20 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeGoal(g.key)}
+                      className="rounded-lg p-1.5 text-gray-400 hover:bg-rose-50 hover:text-rose-600"
+                      aria-label="Remover gol"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {goalsExceedScore && (
+                <p className="text-xs text-rose-600">
+                  Há mais autores ({goalCountForScore}) do que gols do time (
+                  {scoreForFinal}). Ajuste o placar ou remova autores antes de
+                  salvar.
+                </p>
+              )}
+            </section>
+
+            <section className="space-y-3 border-t border-gray-100 pt-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                Dados do jogo
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="block">
                   <span className="text-sm font-medium text-gray-700">Data</span>
@@ -301,7 +409,9 @@ export default function GameDetail() {
                   />
                 </label>
                 <label className="block">
-                  <span className="text-sm font-medium text-gray-700">Horário</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    Horário
+                  </span>
                   <input
                     type="time"
                     required
@@ -323,7 +433,9 @@ export default function GameDetail() {
                 />
               </label>
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">Adversário</span>
+                <span className="text-sm font-medium text-gray-700">
+                  Adversário
+                </span>
                 <input
                   type="text"
                   required
@@ -334,7 +446,9 @@ export default function GameDetail() {
                 />
               </label>
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">Status</span>
+                <span className="text-sm font-medium text-gray-700">
+                  Status
+                </span>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as GameStatus)}
@@ -344,138 +458,19 @@ export default function GameDetail() {
                   <option value="REALIZADO">Realizado</option>
                 </select>
               </label>
-              {status === 'REALIZADO' && (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="block">
-                      <span className="text-sm font-medium text-gray-700">
-                        Gols do time
-                      </span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={99}
-                        required
-                        value={scoreFor}
-                        onChange={(e) => setScoreFor(e.target.value)}
-                        className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="text-sm font-medium text-gray-700">
-                        Gols do adversário
-                      </span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={99}
-                        required
-                        value={scoreAgainst}
-                        onChange={(e) => setScoreAgainst(e.target.value)}
-                        className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </label>
-                  </div>
+            </section>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">
-                        Autores dos gols
-                      </span>
-                      <button
-                        type="button"
-                        onClick={addGoal}
-                        disabled={players.length === 0}
-                        className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        <Plus className="w-3 h-3" />
-                        Adicionar gol
-                      </button>
-                    </div>
-                    {players.length === 0 && (
-                      <p className="text-xs text-gray-500">
-                        Cadastre jogadores no time para registrar autores de gols.
-                      </p>
-                    )}
-                    {goals.length === 0 && players.length > 0 && (
-                      <p className="text-xs text-gray-500">
-                        Nenhum autor registrado.
-                      </p>
-                    )}
-                    <ul className="space-y-2">
-                      {goals.map((g) => (
-                        <li
-                          key={g.key}
-                          className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-2"
-                        >
-                          <select
-                            value={g.playerId}
-                            onChange={(e) =>
-                              updateGoal(g.key, { playerId: e.target.value })
-                            }
-                            className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          >
-                            <option value="" disabled>
-                              Selecione um jogador
-                            </option>
-                            {players.map((p) => (
-                              <option key={p.playerId} value={p.playerId}>
-                                {p.number !== undefined ? `#${p.number} ` : ''}
-                                {p.name}
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            type="number"
-                            min={0}
-                            max={200}
-                            placeholder="min"
-                            value={g.minute}
-                            onChange={(e) =>
-                              updateGoal(g.key, { minute: e.target.value })
-                            }
-                            className="w-20 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeGoal(g.key)}
-                            className="rounded-lg p-1.5 text-gray-400 hover:bg-rose-50 hover:text-rose-600"
-                            aria-label="Remover gol"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                    {playerById.size > 0 && (
-                      <p className="text-[11px] text-gray-400">
-                        Gols sem autor (ex.: gol contra) não precisam ser
-                        registrados aqui; basta lançar o placar acima.
-                      </p>
-                    )}
-                  </div>
-                </>
-              )}
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={cancelEditing}
-                  className="rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-60"
-                >
-                  <Save className="w-4 h-4" />
-                  {saving ? 'Salvando…' : 'Salvar'}
-                </button>
-              </div>
-            </form>
-          )}
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-60"
+              >
+                <Save className="w-4 h-4" />
+                {saving ? 'Salvando…' : 'Salvar jogo'}
+              </button>
+            </div>
+          </form>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
             <div className="flex items-center justify-between">
@@ -490,7 +485,9 @@ export default function GameDetail() {
               className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-3 space-y-3"
             >
               <label className="block">
-                <span className="text-xs font-medium text-gray-700">Arquivo</span>
+                <span className="text-xs font-medium text-gray-700">
+                  Arquivo
+                </span>
                 <input
                   type="file"
                   accept="image/*"
