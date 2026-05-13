@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Compass, LogOut, Trophy, Users } from 'lucide-react';
+import { Compass, LogOut, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Layout() {
@@ -23,12 +23,20 @@ export default function Layout() {
       <header className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <Link to="/teams" className="flex items-center gap-2 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-primary-600 flex items-center justify-center">
-              <Trophy className="w-5 h-5 text-white" />
-            </div>
+            <img
+              src="/logo-192.png"
+              alt="Nosso Time"
+              width={40}
+              height={40}
+              className="h-10 w-10 object-contain"
+            />
             <div className="hidden sm:block">
-              <h1 className="text-lg font-bold text-gray-900 leading-none">Nosso Time</h1>
-              <p className="text-xs text-gray-500">Gestão de times amadores</p>
+              <h1 className="text-lg font-bold text-gray-900 leading-none">
+                Nosso Time
+              </h1>
+              <p className="text-xs text-gray-500">
+                Seu time, sua história, sempre juntos
+              </p>
             </div>
           </Link>
           <nav className="flex items-center gap-1">
