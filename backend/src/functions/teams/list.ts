@@ -4,7 +4,7 @@ import type {
 } from 'aws-lambda';
 import { getUserId } from '../../utils/auth';
 import { success, handleError } from '../../utils/response';
-import { teamService } from '../../services/teamService';
+import { enrichTeamWithLogoUrl, teamService } from '../../services/teamService';
 
 export const handler = async (
   event: APIGatewayProxyEventV2WithJWTAuthorizer,
@@ -12,7 +12,8 @@ export const handler = async (
   try {
     const ownerId = getUserId(event);
     const teams = await teamService.listByOwner(ownerId);
-    return success(teams);
+    const enriched = await Promise.all(teams.map(enrichTeamWithLogoUrl));
+    return success(enriched);
   } catch (err) {
     return handleError(err);
   }

@@ -116,6 +116,22 @@ functions:
           method: get
           authorizer:
             name: cognitoAuthorizer
+  updateTeam:
+    handler: src/functions/teams/update.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}
+          method: put
+          authorizer:
+            name: cognitoAuthorizer
+  getTeamLogoUploadUrl:
+    handler: src/functions/teams/getLogoUploadUrl.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/logo/upload-url
+          method: post
+          authorizer:
+            name: cognitoAuthorizer
 
   createPlayer:
     handler: src/functions/players/create.handler

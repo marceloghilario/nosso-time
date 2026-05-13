@@ -7,6 +7,8 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import PlayerList from '../components/PlayerList';
 import GameList from '../components/GameList';
 import PhotoGallery from '../components/PhotoGallery';
+import TeamLogoUploader from '../components/TeamLogoUploader';
+import type { Team } from '../types';
 
 type Tab = 'players' | 'games' | 'gallery';
 
@@ -19,7 +21,16 @@ export default function TeamDetail() {
   const gamesReq = useApi(() => api.listGames(teamId), [teamId]);
   const mediaReq = useApi(() => api.listMediaByTeam(teamId), [teamId]);
 
-  const team = teamReq.data;
+  const [overrideState, setOverrideState] = useState<{
+    teamId: string;
+    team: Team;
+  } | null>(null);
+  const teamOverride =
+    overrideState && overrideState.teamId === teamId ? overrideState.team : null;
+  const handleTeamUpdated = (updated: Team): void => {
+    setOverrideState({ teamId, team: updated });
+  };
+  const team = teamOverride ?? teamReq.data;
 
   return (
     <div className="space-y-5">
@@ -41,12 +52,19 @@ export default function TeamDetail() {
       {team && (
         <>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="text-xl font-bold text-gray-900 truncate">{team.name}</h2>
-                {team.description && (
-                  <p className="text-sm text-gray-500 mt-1">{team.description}</p>
-                )}
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-4 min-w-0">
+                <TeamLogoUploader
+                  team={team}
+                  size={80}
+                  onChange={handleTeamUpdated}
+                />
+                <div className="min-w-0">
+                  <h2 className="text-xl font-bold text-gray-900 truncate">{team.name}</h2>
+                  {team.description && (
+                    <p className="text-sm text-gray-500 mt-1">{team.description}</p>
+                  )}
+                </div>
               </div>
               <span
                 className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${

@@ -16,6 +16,27 @@ export const CreateTeamSchema = z.object({
   description: z.string().max(500).optional(),
 });
 
+export const UpdateTeamSchema = z
+  .object({
+    name: z.string().min(1, 'Nome do time é obrigatório').max(100).optional(),
+    description: z.string().max(500).optional(),
+    logoS3Key: z.string().min(1).max(500).optional(),
+  })
+  .refine(
+    (val) =>
+      val.name !== undefined ||
+      val.description !== undefined ||
+      val.logoS3Key !== undefined,
+    { message: 'Nenhum campo para atualizar' },
+  );
+
+export const LogoUploadUrlSchema = z.object({
+  contentType: z
+    .string()
+    .regex(/^image\//, 'Content-type deve ser image/*'),
+  fileName: z.string().min(1).max(200),
+});
+
 export const PlayerPositionSchema = z.enum([
   'GOLEIRO',
   'ZAGUEIRO',

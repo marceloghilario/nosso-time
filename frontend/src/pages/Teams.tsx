@@ -3,6 +3,7 @@ import { Plus, ShieldCheck, Users } from 'lucide-react';
 import { api } from '../services/api';
 import { useApi } from '../hooks/useApi';
 import LoadingSpinner from '../components/LoadingSpinner';
+import TeamLogo from '../components/TeamLogo';
 
 export default function Teams() {
   const { data, loading, error } = useApi(() => api.listTeams());
@@ -60,15 +61,22 @@ export default function Teams() {
                   className="group bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-primary-200 transition"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-gray-900 group-hover:text-primary-700 truncate">
-                        {team.name}
-                      </h3>
-                      {team.description && (
-                        <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                          {team.description}
-                        </p>
-                      )}
+                    <div className="flex items-start gap-3 min-w-0">
+                      <TeamLogo
+                        name={team.name}
+                        logoUrl={team.logoUrl}
+                        size={48}
+                      />
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-gray-900 group-hover:text-primary-700 truncate">
+                          {team.name}
+                        </h3>
+                        {team.description && (
+                          <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                            {team.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${

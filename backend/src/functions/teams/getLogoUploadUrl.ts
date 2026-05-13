@@ -3,8 +3,9 @@ import type {
   APIGatewayProxyResultV2,
 } from 'aws-lambda';
 import { getUserId } from '../../utils/auth';
+import { LogoUploadUrlSchema, parseBody } from '../../utils/validators';
 import { HttpError, success, handleError } from '../../utils/response';
-import { enrichTeamWithLogoUrl, teamService } from '../../services/teamService';
+import { teamService } from '../../services/teamService';
 
 export const handler = async (
   event: APIGatewayProxyEventV2WithJWTAuthorizer,
@@ -16,8 +17,9 @@ export const handler = async (
       throw new HttpError('Recurso não encontrado', 404);
     }
     const team = await teamService.getOwnedTeam(teamId, ownerId);
-    const enriched = await enrichTeamWithLogoUrl(team);
-    return success(enriched);
+    const input = parseBody(LogoUploadUrlSchema, event.body);
+    const result = await teamService.getLogoUploadUrl(team, input);
+    return success(result);
   } catch (err) {
     return handleError(err);
   }
