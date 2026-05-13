@@ -5,9 +5,15 @@ import { PLAYER_POSITION_LABELS, comparePlayers } from '../../utils/constants';
 
 interface Props {
   players: Player[];
+  selectedPlayerId?: string | null;
+  onSelect?: (playerId: string) => void;
 }
 
-export default function PlayerListPanel({ players }: Props) {
+export default function PlayerListPanel({
+  players,
+  selectedPlayerId,
+  onSelect,
+}: Props) {
   if (players.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
@@ -19,13 +25,26 @@ export default function PlayerListPanel({ players }: Props) {
   return (
     <ul className="space-y-1.5">
       {sorted.map((p) => (
-        <DraggablePlayer key={p.playerId} player={p} />
+        <DraggablePlayer
+          key={p.playerId}
+          player={p}
+          selected={selectedPlayerId === p.playerId}
+          onSelect={onSelect}
+        />
       ))}
     </ul>
   );
 }
 
-function DraggablePlayer({ player }: { player: Player }) {
+function DraggablePlayer({
+  player,
+  selected,
+  onSelect,
+}: {
+  player: Player;
+  selected: boolean;
+  onSelect?: (playerId: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `panel:${player.playerId}`,
@@ -40,13 +59,18 @@ function DraggablePlayer({ player }: { player: Player }) {
     position: isDragging ? 'relative' : undefined,
   };
 
+  const baseClass = selected
+    ? 'border-amber-400 bg-amber-50 ring-2 ring-amber-200'
+    : 'border-gray-200 bg-white hover:border-emerald-300';
+
   return (
     <li
       ref={setNodeRef}
       style={style}
       {...listeners}
       {...attributes}
-      className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2.5 py-2 shadow-sm cursor-grab active:cursor-grabbing hover:border-emerald-300 touch-none"
+      onClick={() => onSelect?.(player.playerId)}
+      className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 shadow-sm cursor-pointer active:cursor-grabbing touch-none ${baseClass}`}
     >
       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-primary-700 text-xs font-semibold">
         {player.number !== undefined ? (
