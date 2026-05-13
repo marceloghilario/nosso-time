@@ -10,6 +10,7 @@ export interface Team {
   ownerId: string;
   name: string;
   description?: string;
+  logoS3Key?: string;
   plan: Plan;
   photoCount: number;
   createdAt: string;

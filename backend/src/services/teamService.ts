@@ -5,6 +5,8 @@ import {
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuid } from 'uuid';
 import { docClient, TABLES } from '../utils/dynamo';
 import { HttpError } from '../utils/response';
@@ -15,6 +17,50 @@ export interface CreateTeamInput {
   name: string;
   description?: string;
 }
+
+export interface UpdateTeamInput {
+  name?: string;
+  description?: string;
+  logoS3Key?: string;
+}
+
+export interface LogoUploadUrlInput {
+  contentType: string;
+  fileName: string;
+}
+
+export interface TeamWithLogo extends Team {
+  logoUrl?: string;
+}
+
+const region = process.env.AWS_REGION ?? 'us-east-1';
+const s3Client = new S3Client({ region });
+const BUCKET = process.env.PHOTOS_BUCKET ?? '';
+const LOGO_UPLOAD_URL_EXPIRY_SECONDS = 5 * 60;
+const LOGO_VIEW_URL_EXPIRY_SECONDS = 60 * 60;
+
+const sanitizeFileName = (name: string): string =>
+  name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
+
+const teamLogoS3Prefix = (teamId: string): string => `teams/${teamId}/logo/`;
+
+const ensureLogoKeyBelongsToTeam = (s3Key: string, teamId: string): void => {
+  if (!s3Key.startsWith(teamLogoS3Prefix(teamId))) {
+    throw new HttpError('Chave S3 inválida para o logo deste time', 400);
+  }
+};
+
+const buildLogoViewUrl = async (s3Key: string): Promise<string> => {
+  const command = new GetObjectCommand({ Bucket: BUCKET, Key: s3Key });
+  return getSignedUrl(s3Client, command, { expiresIn: LOGO_VIEW_URL_EXPIRY_SECONDS });
+};
+
+export const enrichTeamWithLogoUrl = async (
+  team: Team,
+): Promise<TeamWithLogo> => {
+  if (!team.logoS3Key) return team;
+  return { ...team, logoUrl: await buildLogoViewUrl(team.logoS3Key) };
+};
 
 export const teamService = {
   async create(ownerId: string, input: CreateTeamInput): Promise<Team> {
@@ -70,6 +116,69 @@ export const teamService = {
       throw new HttpError('Você não tem permissão para acessar este recurso', 403);
     }
     return team;
+  },
+
+  async update(
+    teamId: string,
+    ownerId: string,
+    input: UpdateTeamInput,
+  ): Promise<Team> {
+    const team = await this.getOwnedTeam(teamId, ownerId);
+    if (input.logoS3Key !== undefined) {
+      ensureLogoKeyBelongsToTeam(input.logoS3Key, teamId);
+    }
+
+    const exprNames: Record<string, string> = { '#updatedAt': 'updatedAt' };
+    const exprValues: Record<string, unknown> = {
+      ':updatedAt': new Date().toISOString(),
+    };
+    const sets: string[] = ['#updatedAt = :updatedAt'];
+
+    if (input.name !== undefined) {
+      exprNames['#name'] = 'name';
+      exprValues[':name'] = input.name;
+      sets.push('#name = :name');
+    }
+    if (input.description !== undefined) {
+      exprNames['#description'] = 'description';
+      exprValues[':description'] = input.description;
+      sets.push('#description = :description');
+    }
+    if (input.logoS3Key !== undefined) {
+      exprNames['#logoS3Key'] = 'logoS3Key';
+      exprValues[':logoS3Key'] = input.logoS3Key;
+      sets.push('#logoS3Key = :logoS3Key');
+    }
+
+    const result = await docClient.send(
+      new UpdateCommand({
+        TableName: TABLES.TEAMS,
+        Key: { teamId: team.teamId },
+        UpdateExpression: `SET ${sets.join(', ')}`,
+        ExpressionAttributeNames: exprNames,
+        ExpressionAttributeValues: exprValues,
+        ConditionExpression: 'attribute_exists(teamId)',
+        ReturnValues: 'ALL_NEW',
+      }),
+    );
+    return (result.Attributes as Team) ?? team;
+  },
+
+  async getLogoUploadUrl(
+    team: Team,
+    input: LogoUploadUrlInput,
+  ): Promise<{ uploadUrl: string; s3Key: string }> {
+    const safeName = sanitizeFileName(input.fileName);
+    const s3Key = `${teamLogoS3Prefix(team.teamId)}${uuid()}-${safeName}`;
+    const command = new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: s3Key,
+      ContentType: input.contentType,
+    });
+    const uploadUrl = await getSignedUrl(s3Client, command, {
+      expiresIn: LOGO_UPLOAD_URL_EXPIRY_SECONDS,
+    });
+    return { uploadUrl, s3Key };
   },
 
   async reserveAndIncrementPhoto(team: Team): Promise<number> {

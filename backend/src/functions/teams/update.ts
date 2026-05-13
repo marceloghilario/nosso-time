@@ -3,6 +3,7 @@ import type {
   APIGatewayProxyResultV2,
 } from 'aws-lambda';
 import { getUserId } from '../../utils/auth';
+import { UpdateTeamSchema, parseBody } from '../../utils/validators';
 import { HttpError, success, handleError } from '../../utils/response';
 import { enrichTeamWithLogoUrl, teamService } from '../../services/teamService';
 
@@ -15,8 +16,9 @@ export const handler = async (
     if (!teamId) {
       throw new HttpError('Recurso não encontrado', 404);
     }
-    const team = await teamService.getOwnedTeam(teamId, ownerId);
-    const enriched = await enrichTeamWithLogoUrl(team);
+    const input = parseBody(UpdateTeamSchema, event.body);
+    const updated = await teamService.update(teamId, ownerId, input);
+    const enriched = await enrichTeamWithLogoUrl(updated);
     return success(enriched);
   } catch (err) {
     return handleError(err);

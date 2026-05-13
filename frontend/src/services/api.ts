@@ -135,6 +135,17 @@ export interface CreateTeamInput {
   description?: string;
 }
 
+export interface UpdateTeamInput {
+  name?: string;
+  description?: string;
+  logoS3Key?: string;
+}
+
+export interface LogoUploadUrlInput {
+  contentType: string;
+  fileName: string;
+}
+
 export interface CreatePlayerInput {
   name: string;
   position: PlayerPosition;
@@ -188,6 +199,13 @@ export const api = {
   createTeam: (input: CreateTeamInput) =>
     request<Team>('/teams', { method: 'POST', body: input }),
   getTeam: (teamId: string) => request<Team>(`/teams/${teamId}`),
+  updateTeam: (teamId: string, input: UpdateTeamInput) =>
+    request<Team>(`/teams/${teamId}`, { method: 'PUT', body: input }),
+  getTeamLogoUploadUrl: (teamId: string, input: LogoUploadUrlInput) =>
+    request<UploadUrlResponse>(`/teams/${teamId}/logo/upload-url`, {
+      method: 'POST',
+      body: input,
+    }),
 
   listPlayers: (teamId: string) =>
     request<Player[]>(`/teams/${teamId}/players`),
