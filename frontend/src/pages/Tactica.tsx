@@ -23,12 +23,12 @@ import type {
   Player,
 } from '../types';
 import { FORMATION_SLOTS } from '../utils/formationSchemes';
-import { comparePlayers } from '../utils/constants';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useToast } from '../components/Toast';
 import { TacticalBoard } from '../components/tactical/TacticalBoard';
 import PlayerMarker from '../components/tactical/PlayerMarker';
 import PlayerListPanel from '../components/tactical/PlayerListPanel';
+import EmptySlot from '../components/tactical/EmptySlot';
 import FormationSelector from '../components/tactical/FormationSelector';
 import FormationList from '../components/tactical/FormationList';
 import FormationModal from '../components/tactical/FormationModal';
@@ -40,67 +40,96 @@ const DEFAULT_SCHEME: FormationScheme = '4-4-2';
 
 type SidebarTab = 'players' | 'formations';
 
-type PlacedPosition = FormationPlayerPosition;
+interface SlotAssignment {
+  playerId: string;
+  playerName: string;
+  playerNumber?: number;
+}
+
+interface FieldSlot {
+  slotIndex: number;
+  role: string;
+  x: number;
+  y: number;
+  player?: SlotAssignment;
+}
 
 const clamp = (value: number, min = 0, max = 100): number =>
   Math.min(max, Math.max(min, value));
 
-const toPlacedFromPlayer = (
-  player: Player,
+const buildEmptySlots = (scheme: FormationScheme): FieldSlot[] =>
+  FORMATION_SLOTS[scheme].map((s, idx) => ({
+    slotIndex: idx,
+    role: s.role,
+    x: s.x,
+    y: s.y,
+  }));
+
+const findClosestEmptySlot = (
+  slots: FieldSlot[],
   x: number,
   y: number,
-): PlacedPosition => ({
-  playerId: player.playerId,
-  playerName: player.name,
-  playerNumber: player.number,
-  x: clamp(x),
-  y: clamp(y),
-});
-
-const sortPlayersForDisplay = (players: Player[]): Player[] =>
-  [...players].sort(comparePlayers);
-
-const reflowToScheme = (
-  current: PlacedPosition[],
-  scheme: FormationScheme,
-): PlacedPosition[] => {
-  if (current.length === 0) return [];
-  const slots = FORMATION_SLOTS[scheme];
-  const usedSlots = new Set<number>();
-  const out: PlacedPosition[] = [];
-  for (const p of current) {
-    let bestIdx = -1;
-    let bestDist = Number.POSITIVE_INFINITY;
-    for (let i = 0; i < slots.length; i++) {
-      if (usedSlots.has(i)) continue;
-      const dx = slots[i].x - p.x;
-      const dy = slots[i].y - p.y;
-      const dist = dx * dx + dy * dy;
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestIdx = i;
-      }
-    }
-    if (bestIdx === -1) {
-      out.push(p);
-    } else {
-      usedSlots.add(bestIdx);
-      out.push({ ...p, x: slots[bestIdx].x, y: slots[bestIdx].y });
+): number => {
+  let bestIdx = -1;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < slots.length; i++) {
+    if (slots[i].player) continue;
+    const dx = slots[i].x - x;
+    const dy = slots[i].y - y;
+    const d = dx * dx + dy * dy;
+    if (d < bestDist) {
+      bestDist = d;
+      bestIdx = i;
     }
   }
-  return out;
+  return bestIdx;
 };
 
-const fillEmptyFromScheme = (
-  players: Player[],
+const slotsFromFormation = (
   scheme: FormationScheme,
-): PlacedPosition[] => {
-  const slots = FORMATION_SLOTS[scheme];
-  const sorted = sortPlayersForDisplay(players);
-  return sorted.slice(0, slots.length).map((player, idx) =>
-    toPlacedFromPlayer(player, slots[idx].x, slots[idx].y),
-  );
+  positions: FormationPlayerPosition[],
+): FieldSlot[] => {
+  const fresh = buildEmptySlots(scheme);
+  for (const pp of positions) {
+    const idx = findClosestEmptySlot(fresh, pp.x, pp.y);
+    if (idx === -1) continue;
+    fresh[idx] = {
+      ...fresh[idx],
+      x: pp.x,
+      y: pp.y,
+      player: {
+        playerId: pp.playerId,
+        playerName: pp.playerName,
+        playerNumber: pp.playerNumber,
+      },
+    };
+  }
+  return fresh;
 };
+
+const reflowSlotsToScheme = (
+  current: FieldSlot[],
+  next: FormationScheme,
+): FieldSlot[] => {
+  const fresh = buildEmptySlots(next);
+  const assigned = current.filter((s) => s.player);
+  for (const old of assigned) {
+    if (!old.player) continue;
+    const idx = findClosestEmptySlot(fresh, old.x, old.y);
+    if (idx === -1) continue;
+    fresh[idx] = {
+      ...fresh[idx],
+      player: old.player,
+    };
+  }
+  return fresh;
+};
+
+const toAssignment = (p: Player): SlotAssignment => ({
+  playerId: p.playerId,
+  playerName: p.name,
+  playerNumber: p.number,
+});
 
 export default function Tactica() {
   const { teamId = '' } = useParams<{ teamId: string }>();
@@ -112,10 +141,16 @@ export default function Tactica() {
   const [formations, setFormations] = useState<Formation[]>([]);
 
   const [scheme, setScheme] = useState<FormationScheme>(DEFAULT_SCHEME);
-  const [placed, setPlaced] = useState<PlacedPosition[]>([]);
+  const [slots, setSlots] = useState<FieldSlot[]>(() =>
+    buildEmptySlots(DEFAULT_SCHEME),
+  );
   const [currentFormation, setCurrentFormation] = useState<Formation | null>(
     null,
   );
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(
+    null,
+  );
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
   const [tab, setTab] = useState<SidebarTab>('players');
   const [modalOpen, setModalOpen] = useState(false);
@@ -151,11 +186,11 @@ export default function Tactica() {
         if (active) {
           setCurrentFormation(active);
           setScheme(active.scheme);
-          setPlaced(active.playerPositions);
+          setSlots(slotsFromFormation(active.scheme, active.playerPositions));
         } else {
           setCurrentFormation(null);
           setScheme(DEFAULT_SCHEME);
-          setPlaced([]);
+          setSlots(buildEmptySlots(DEFAULT_SCHEME));
         }
       } catch (err) {
         if (cancelled) return;
@@ -170,12 +205,12 @@ export default function Tactica() {
   }, [teamId, showError]);
 
   const placedIds = useMemo(
-    () => new Set(placed.map((p) => p.playerId)),
-    [placed],
+    () => new Set(slots.filter((s) => s.player).map((s) => s.player!.playerId)),
+    [slots],
   );
 
   const availablePlayers = useMemo(
-    () => sortPlayersForDisplay(players.filter((p) => !placedIds.has(p.playerId))),
+    () => players.filter((p) => !placedIds.has(p.playerId)),
     [players, placedIds],
   );
 
@@ -185,62 +220,128 @@ export default function Tactica() {
     return map;
   }, [players]);
 
-  const setSchemeAndReflow = (next: FormationScheme) => {
-    setScheme(next);
-    setPlaced((prev) => reflowToScheme(prev, next));
+  const assignPlayerToSlot = (slotIndex: number, player: Player) => {
+    setSlots((prev) =>
+      prev.map((s) => {
+        if (s.player?.playerId === player.playerId) {
+          return { ...s, player: undefined };
+        }
+        if (s.slotIndex === slotIndex) {
+          return { ...s, player: toAssignment(player) };
+        }
+        return s;
+      }),
+    );
   };
 
-  const placeFromList = (player: Player, x: number, y: number) => {
-    setPlaced((prev) => [...prev, toPlacedFromPlayer(player, x, y)]);
-  };
-
-  const moveOnField = (playerId: string, dx: number, dy: number) => {
-    setPlaced((prev) =>
-      prev.map((p) =>
-        p.playerId === playerId
-          ? { ...p, x: clamp(p.x + dx), y: clamp(p.y + dy) }
-          : p,
+  const removeFromSlot = (slotIndex: number) => {
+    setSlots((prev) =>
+      prev.map((s) =>
+        s.slotIndex === slotIndex ? { ...s, player: undefined } : s,
       ),
     );
   };
 
-  const removeFromField = (playerId: string) => {
-    setPlaced((prev) => prev.filter((p) => p.playerId !== playerId));
+  const removePlayerById = (playerId: string) => {
+    setSlots((prev) =>
+      prev.map((s) =>
+        s.player?.playerId === playerId ? { ...s, player: undefined } : s,
+      ),
+    );
+  };
+
+  const moveSlot = (slotIndex: number, dx: number, dy: number) => {
+    setSlots((prev) =>
+      prev.map((s) =>
+        s.slotIndex === slotIndex
+          ? { ...s, x: clamp(s.x + dx), y: clamp(s.y + dy) }
+          : s,
+      ),
+    );
+  };
+
+  const setSchemeAndReflow = (next: FormationScheme) => {
+    setScheme(next);
+    setSlots((prev) => reflowSlotsToScheme(prev, next));
+    setSelectedSlotIndex(null);
+  };
+
+  const handleSlotClick = (slotIndex: number) => {
+    if (selectedPlayerId) {
+      const player = playerById.get(selectedPlayerId);
+      if (player) {
+        assignPlayerToSlot(slotIndex, player);
+        setSelectedPlayerId(null);
+        setSelectedSlotIndex(null);
+        return;
+      }
+    }
+    setSelectedSlotIndex((prev) => (prev === slotIndex ? null : slotIndex));
+  };
+
+  const handlePlayerSelect = (playerId: string) => {
+    if (selectedSlotIndex !== null) {
+      const player = playerById.get(playerId);
+      if (player) {
+        assignPlayerToSlot(selectedSlotIndex, player);
+        setSelectedSlotIndex(null);
+        setSelectedPlayerId(null);
+        return;
+      }
+    }
+    setSelectedPlayerId((prev) => (prev === playerId ? null : playerId));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const data = event.active.data.current as
-      | { type: 'panel' | 'marker'; playerId: string }
+      | { type: 'panel' | 'marker'; playerId?: string; slotIndex?: number }
       | undefined;
     if (!data) return;
     const field = fieldRef.current;
     if (!field) return;
     const fieldRect = field.getBoundingClientRect();
-    const droppedOnField = event.over?.id === FIELD_DROPPABLE_ID;
+    const overId = event.over?.id;
+    const overData = event.over?.data.current as
+      | { type?: 'slot'; slotIndex?: number }
+      | undefined;
+    const droppedOnField = overId === FIELD_DROPPABLE_ID || !!overData;
 
-    if (data.type === 'panel') {
-      if (!droppedOnField) return;
+    if (data.type === 'panel' && data.playerId) {
       const player = playerById.get(data.playerId);
       if (!player) return;
-      const translated = event.active.rect.current.translated;
-      if (!translated) return;
-      const centerX = translated.left + translated.width / 2;
-      const centerY = translated.top + translated.height / 2;
-      const x = ((centerX - fieldRect.left) / fieldRect.width) * 100;
-      const y = ((centerY - fieldRect.top) / fieldRect.height) * 100;
       if (placedIds.has(player.playerId)) return;
-      placeFromList(player, x, y);
+      if (!droppedOnField) return;
+      let targetSlotIndex = -1;
+      if (overData?.type === 'slot' && typeof overData.slotIndex === 'number') {
+        const target = slots.find((s) => s.slotIndex === overData.slotIndex);
+        if (target && !target.player) {
+          targetSlotIndex = overData.slotIndex;
+        }
+      }
+      if (targetSlotIndex === -1) {
+        const translated = event.active.rect.current.translated;
+        if (!translated) return;
+        const centerX = translated.left + translated.width / 2;
+        const centerY = translated.top + translated.height / 2;
+        const x = ((centerX - fieldRect.left) / fieldRect.width) * 100;
+        const y = ((centerY - fieldRect.top) / fieldRect.height) * 100;
+        targetSlotIndex = findClosestEmptySlot(slots, x, y);
+      }
+      if (targetSlotIndex === -1) return;
+      assignPlayerToSlot(targetSlotIndex, player);
       return;
     }
 
-    if (data.type === 'marker') {
+    if (data.type === 'marker' && data.playerId) {
       if (!droppedOnField) {
-        removeFromField(data.playerId);
+        removePlayerById(data.playerId);
         return;
       }
+      const slot = slots.find((s) => s.player?.playerId === data.playerId);
+      if (!slot) return;
       const dx = (event.delta.x / fieldRect.width) * 100;
       const dy = (event.delta.y / fieldRect.height) * 100;
-      moveOnField(data.playerId, dx, dy);
+      moveSlot(slot.slotIndex, dx, dy);
     }
   };
 
@@ -262,38 +363,41 @@ export default function Tactica() {
     return updated;
   };
 
+  const placedPositions = (): { playerId: string; x: number; y: number }[] =>
+    slots
+      .filter((s) => s.player)
+      .map((s) => ({
+        playerId: s.player!.playerId,
+        x: s.x,
+        y: s.y,
+      }));
+
   const saveFormation = async (values: { name: string; isActive: boolean }) => {
     setSaving(true);
     try {
       if (modalMode === 'create') {
-        const payload = {
+        const created = await api.createFormation(teamId, {
           name: values.name,
           scheme,
           isActive: values.isActive,
-          playerPositions: placed.map((p) => ({
-            playerId: p.playerId,
-            x: p.x,
-            y: p.y,
-          })),
-        };
-        const created = await api.createFormation(teamId, payload);
+          playerPositions: placedPositions(),
+        });
         setCurrentFormation(created);
         showSuccess('Formação criada!');
       } else if (modalTarget) {
-        const payload = {
-          name: values.name,
-          scheme: modalTarget.scheme,
-          isActive: values.isActive,
-          playerPositions: modalTarget.playerPositions.map((p) => ({
-            playerId: p.playerId,
-            x: p.x,
-            y: p.y,
-          })),
-        };
         const updated = await api.updateFormation(
           teamId,
           modalTarget.formationId,
-          payload,
+          {
+            name: values.name,
+            scheme: modalTarget.scheme,
+            isActive: values.isActive,
+            playerPositions: modalTarget.playerPositions.map((p) => ({
+              playerId: p.playerId,
+              x: p.x,
+              y: p.y,
+            })),
+          },
         );
         if (currentFormation?.formationId === updated.formationId) {
           setCurrentFormation(updated);
@@ -316,20 +420,15 @@ export default function Tactica() {
     }
     setSaving(true);
     try {
-      const payload = {
-        name: currentFormation.name,
-        scheme,
-        isActive: currentFormation.isActive,
-        playerPositions: placed.map((p) => ({
-          playerId: p.playerId,
-          x: p.x,
-          y: p.y,
-        })),
-      };
       const updated = await api.updateFormation(
         teamId,
         currentFormation.formationId,
-        payload,
+        {
+          name: currentFormation.name,
+          scheme,
+          isActive: currentFormation.isActive,
+          playerPositions: placedPositions(),
+        },
       );
       setCurrentFormation(updated);
       await refreshFormations();
@@ -349,14 +448,18 @@ export default function Tactica() {
   const handleLoadFormation = (formation: Formation) => {
     setCurrentFormation(formation);
     setScheme(formation.scheme);
-    setPlaced(formation.playerPositions);
+    setSlots(slotsFromFormation(formation.scheme, formation.playerPositions));
+    setSelectedSlotIndex(null);
+    setSelectedPlayerId(null);
     setTab('players');
     showSuccess(`Formação "${formation.name}" carregada`);
   };
 
   const handleDeleteFormation = async (formation: Formation) => {
     if (
-      !window.confirm(`Excluir a formação "${formation.name}"? Esta ação não pode ser desfeita.`)
+      !window.confirm(
+        `Excluir a formação "${formation.name}"? Esta ação não pode ser desfeita.`,
+      )
     ) {
       return;
     }
@@ -364,7 +467,7 @@ export default function Tactica() {
       await api.deleteFormation(teamId, formation.formationId);
       if (currentFormation?.formationId === formation.formationId) {
         setCurrentFormation(null);
-        setPlaced([]);
+        setSlots(buildEmptySlots(scheme));
       }
       await refreshFormations();
       showSuccess('Formação excluída');
@@ -373,14 +476,18 @@ export default function Tactica() {
     }
   };
 
-  const handleFillFromScheme = () => {
-    const filled = fillEmptyFromScheme(players, scheme);
-    setPlaced(filled);
+  const handleClearAll = () => {
+    setSlots(buildEmptySlots(scheme));
+    setSelectedSlotIndex(null);
+    setSelectedPlayerId(null);
   };
 
   if (loading) {
     return <LoadingSpinner label="Carregando tática..." />;
   }
+
+  const placedCount = slots.filter((s) => s.player).length;
+  const totalSlots = slots.length;
 
   return (
     <div className="space-y-4">
@@ -399,10 +506,11 @@ export default function Tactica() {
               <FormationSelector value={scheme} onChange={setSchemeAndReflow} />
               <button
                 type="button"
-                onClick={handleFillFromScheme}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                onClick={handleClearAll}
+                disabled={placedCount === 0}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
-                Preencher pelo esquema
+                Limpar campo
               </button>
               <button
                 type="button"
@@ -414,6 +522,16 @@ export default function Tactica() {
               </button>
             </div>
 
+            <p className="text-xs text-gray-500 leading-relaxed px-1">
+              Clique numa posição vazia e depois num jogador da lista (ou na
+              ordem inversa) para escalá-lo. Você também pode arrastar um
+              jogador da lista direto pra posição, ou arrastar um jogador já
+              escalado para reposicionar/remover.{' '}
+              <span className="font-medium text-gray-700">
+                ({placedCount}/{totalSlots} escalados)
+              </span>
+            </p>
+
             <TacticalBoard
               ref={fieldRef}
               droppableId={FIELD_DROPPABLE_ID}
@@ -421,13 +539,31 @@ export default function Tactica() {
               formationName={currentFormation?.name}
               scheme={scheme}
             >
-              {placed.map((p) => (
-                <PlayerMarker
-                  key={p.playerId}
-                  position={p}
-                  onRemove={removeFromField}
-                />
-              ))}
+              {slots.map((slot) =>
+                slot.player ? (
+                  <PlayerMarker
+                    key={`m-${slot.slotIndex}`}
+                    position={{
+                      playerId: slot.player.playerId,
+                      playerName: slot.player.playerName,
+                      playerNumber: slot.player.playerNumber,
+                      x: slot.x,
+                      y: slot.y,
+                    }}
+                    onRemove={() => removeFromSlot(slot.slotIndex)}
+                  />
+                ) : (
+                  <EmptySlot
+                    key={`s-${slot.slotIndex}`}
+                    slotIndex={slot.slotIndex}
+                    role={slot.role}
+                    x={slot.x}
+                    y={slot.y}
+                    selected={selectedSlotIndex === slot.slotIndex}
+                    onClick={handleSlotClick}
+                  />
+                ),
+              )}
             </TacticalBoard>
 
             <div className="flex flex-wrap gap-2">
@@ -469,7 +605,11 @@ export default function Tactica() {
                 />
               </div>
               {tab === 'players' && (
-                <PlayerListPanel players={availablePlayers} />
+                <PlayerListPanel
+                  players={availablePlayers}
+                  selectedPlayerId={selectedPlayerId}
+                  onSelect={handlePlayerSelect}
+                />
               )}
               {tab === 'formations' && (
                 <FormationList
@@ -481,11 +621,6 @@ export default function Tactica() {
                 />
               )}
             </div>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Arraste jogadores da lista para o campo, ou os marcadores no campo
-              para reposicionar. Arraste um jogador para fora do campo para
-              removê-lo da formação.
-            </p>
           </aside>
         </div>
       </DndContext>
