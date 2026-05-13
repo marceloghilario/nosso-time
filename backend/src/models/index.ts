@@ -42,6 +42,12 @@ export interface GameResult {
   scoreAgainst: number;
 }
 
+export interface GameGoal {
+  playerId: string;
+  playerName: string;
+  minute?: number;
+}
+
 export interface Game {
   gameId: string;
   teamId: string;
@@ -51,6 +57,7 @@ export interface Game {
   opponent: string;
   status: GameStatus;
   result?: GameResult;
+  goals?: GameGoal[];
   createdAt: string;
   updatedAt: string;
 }

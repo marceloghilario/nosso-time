@@ -104,7 +104,9 @@ export default function TeamDetail() {
                   />
                   {gamesReq.loading && <LoadingSpinner label="Carregando jogos..." />}
                   {gamesReq.error && <ErrorBox message={gamesReq.error} />}
-                  {gamesReq.data && <GameList games={gamesReq.data} />}
+                  {gamesReq.data && (
+                    <GameList teamId={teamId} games={gamesReq.data} />
+                  )}
                 </>
               )}
               {tab === 'gallery' && (
