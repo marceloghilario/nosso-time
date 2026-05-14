@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, Camera, LayoutGrid, Plus, Users } from 'lucide-react';
 import { api } from '../services/api';
 import { useApi } from '../hooks/useApi';
@@ -14,6 +14,7 @@ type Tab = 'players' | 'games' | 'gallery';
 
 export default function TeamDetail() {
   const { teamId = '' } = useParams<{ teamId: string }>();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('players');
 
   const teamReq = useApi(() => api.getTeam(teamId), [teamId]);
@@ -76,15 +77,6 @@ export default function TeamDetail() {
                 Plano {team.plan}
               </span>
             </div>
-            <div className="mt-4">
-              <Link
-                to={`/teams/${teamId}/tatica`}
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
-              >
-                <LayoutGrid className="w-4 h-4" />
-                Montagem tática
-              </Link>
-            </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -94,6 +86,12 @@ export default function TeamDetail() {
                 onClick={() => setTab('players')}
                 icon={<Users className="w-4 h-4" />}
                 label="Jogadores"
+              />
+              <TabButton
+                active={false}
+                onClick={() => navigate(`/teams/${teamId}/tatica`)}
+                icon={<LayoutGrid className="w-4 h-4" />}
+                label="Campo"
               />
               <TabButton
                 active={tab === 'games'}

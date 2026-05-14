@@ -6,6 +6,7 @@ import { GAME_STATUS_LABELS } from '../utils/constants';
 interface Props {
   teamId: string;
   games: Game[];
+  readOnly?: boolean;
 }
 
 const formatDate = (date: string, time: string): string => {
@@ -13,7 +14,7 @@ const formatDate = (date: string, time: string): string => {
   return `${day}/${month}/${year} às ${time}`;
 };
 
-export default function GameList({ teamId, games }: Props) {
+export default function GameList({ teamId, games, readOnly }: Props) {
   if (games.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
@@ -27,12 +28,8 @@ export default function GameList({ teamId, games }: Props) {
 
   return (
     <div className="space-y-3">
-      {games.map((game) => (
-        <Link
-          key={game.gameId}
-          to={`/teams/${teamId}/jogos/${game.gameId}`}
-          className="block bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:border-primary-300 hover:shadow transition"
-        >
+      {games.map((game) => {
+        const body = (
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-gray-900 truncate">vs {game.opponent}</p>
@@ -67,11 +64,30 @@ export default function GameList({ teamId, games }: Props) {
                   {game.result.scoreAgainst}
                 </p>
               )}
-              <ChevronRight className="w-4 h-4 text-gray-400" />
+              {!readOnly && <ChevronRight className="w-4 h-4 text-gray-400" />}
             </div>
           </div>
-        </Link>
-      ))}
+        );
+        if (readOnly) {
+          return (
+            <div
+              key={game.gameId}
+              className="block bg-white rounded-xl shadow-sm border border-gray-100 p-4"
+            >
+              {body}
+            </div>
+          );
+        }
+        return (
+          <Link
+            key={game.gameId}
+            to={`/teams/${teamId}/jogos/${game.gameId}`}
+            className="block bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:border-primary-300 hover:shadow transition"
+          >
+            {body}
+          </Link>
+        );
+      })}
     </div>
   );
 }

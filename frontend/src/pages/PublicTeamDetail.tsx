@@ -131,7 +131,11 @@ export default function PublicTeamDetail() {
                 />
               )}
               {tab === 'games' && (
-                <GameList games={state.data.games as unknown as Game[]} />
+                <GameList
+                  teamId={teamId}
+                  games={state.data.games as unknown as Game[]}
+                  readOnly
+                />
               )}
               {tab === 'gallery' && (
                 <PhotoGallery media={state.data.media as unknown as Media[]} />
