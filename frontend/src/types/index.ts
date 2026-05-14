@@ -91,3 +91,56 @@ export interface AuthSession {
 export type ApiSuccess<T> = { success: true; data: T };
 export type ApiFailure = { success: false; error: string };
 export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
+
+export interface PublicTeamSummary {
+  teamId: string;
+  name: string;
+  description?: string;
+  photoCount: number;
+  logoUrl?: string;
+  createdAt: string;
+}
+
+export interface PublicTeam {
+  teamId: string;
+  name: string;
+  description?: string;
+  photoCount: number;
+  logoUrl?: string;
+  createdAt: string;
+}
+
+export interface PublicPlayer {
+  playerId: string;
+  name: string;
+  position: PlayerPosition;
+  number?: number;
+  characteristics?: string;
+}
+
+export interface PublicGame {
+  gameId: string;
+  date: string;
+  time: string;
+  location: string;
+  opponent: string;
+  status: GameStatus;
+  result?: GameResult;
+}
+
+export interface PublicMedia {
+  mediaId: string;
+  gameId?: string;
+  type: MediaType;
+  s3Key: string;
+  caption?: string;
+  createdAt: string;
+  url?: string;
+}
+
+export interface PublicTeamDetail {
+  team: PublicTeam;
+  players: PublicPlayer[];
+  games: PublicGame[];
+  media: PublicMedia[];
+}

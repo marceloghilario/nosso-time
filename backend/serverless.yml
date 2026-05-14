@@ -133,6 +133,23 @@ functions:
           authorizer:
             name: cognitoAuthorizer
 
+  exploreSearchTeams:
+    handler: src/functions/explore/searchTeams.handler
+    events:
+      - httpApi:
+          path: /explore/teams
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+  exploreGetTeam:
+    handler: src/functions/explore/getTeam.handler
+    events:
+      - httpApi:
+          path: /explore/teams/{teamId}
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+
   createPlayer:
     handler: src/functions/players/create.handler
     events:

@@ -8,6 +8,8 @@ import type {
   MediaType,
   Player,
   PlayerPosition,
+  PublicTeamDetail,
+  PublicTeamSummary,
   Team,
 } from '../types';
 
@@ -236,6 +238,13 @@ export const api = {
     request<Media[]>(`/teams/${teamId}/media`),
   listMediaByGame: (teamId: string, gameId: string) =>
     request<Media[]>(`/teams/${teamId}/games/${gameId}/media`),
+
+  searchPublicTeams: (query: string) => {
+    const qs = query ? `?q=${encodeURIComponent(query)}` : '';
+    return request<PublicTeamSummary[]>(`/explore/teams${qs}`);
+  },
+  getPublicTeam: (teamId: string) =>
+    request<PublicTeamDetail>(`/explore/teams/${teamId}`),
 
   uploadToS3: async (
     uploadUrl: string,
