@@ -423,13 +423,32 @@ export default function GameDetail() {
             </section>
 
             <section className="space-y-2 border-t border-gray-100 pt-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Jogadores confirmados
                 </h3>
-                <span className="text-[11px] text-gray-500">
-                  {confirmedPlayerIds.length}/{players.length}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-gray-500">
+                    {confirmedPlayerIds.length}/{players.length}
+                  </span>
+                  {players.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setConfirmedPlayerIds(
+                          confirmedPlayerIds.length === players.length
+                            ? []
+                            : players.map((p) => p.playerId),
+                        )
+                      }
+                      className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      {confirmedPlayerIds.length === players.length
+                        ? 'Limpar seleção'
+                        : 'Selecionar todos'}
+                    </button>
+                  )}
+                </div>
               </div>
               {players.length === 0 ? (
                 <p className="text-xs text-gray-500">
