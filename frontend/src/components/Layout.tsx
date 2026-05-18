@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Compass, LogOut, Users } from 'lucide-react';
+import { Compass, LogOut, Trophy, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Layout() {
@@ -44,9 +44,13 @@ export default function Layout() {
               <Users className="w-4 h-4" />
               <span>Meus times</span>
             </NavLink>
+            <NavLink to="/campeonatos" className={navItemClass}>
+              <Trophy className="w-4 h-4" />
+              <span className="hidden sm:inline">Campeonatos</span>
+            </NavLink>
             <NavLink to="/explorar" className={navItemClass}>
               <Compass className="w-4 h-4" />
-              <span>Explorar</span>
+              <span className="hidden sm:inline">Explorar</span>
             </NavLink>
           </nav>
           <div className="flex items-center gap-3">

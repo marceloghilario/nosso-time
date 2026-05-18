@@ -1,6 +1,6 @@
 import { z, ZodError } from 'zod';
 import { HttpError } from './response';
-import { FORMATION_SCHEMES } from '../models';
+import { CHAMPIONSHIP_FORMATS, FORMATION_SCHEMES } from '../models';
 
 export const SignupSchema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -154,6 +154,75 @@ export const CreateFormationSchema = z.object({
 });
 
 export const UpdateFormationSchema = CreateFormationSchema;
+
+export const ChampionshipFormatSchema = z.enum(CHAMPIONSHIP_FORMATS);
+
+export const ChampionshipParticipantInputSchema = z.object({
+  teamId: z.string().min(1),
+  teamName: z.string().min(1).max(100),
+  logoUrl: z.string().url().optional(),
+  isMine: z.boolean().optional(),
+});
+
+export const CreateChampionshipSchema = z
+  .object({
+    name: z.string().min(1, 'Nome do campeonato é obrigatório').max(100),
+    format: ChampionshipFormatSchema,
+    doubleRoundRobin: z.boolean().optional(),
+    participants: z
+      .array(ChampionshipParticipantInputSchema)
+      .min(2, 'Selecione ao menos 2 times')
+      .max(16, 'Máximo de 16 times nesta versão'),
+  })
+  .superRefine((val, ctx) => {
+    if (val.format === 'PONTOS_CORRIDOS' && val.participants.length < 3) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Pontos corridos exige ao menos 3 times',
+        path: ['participants'],
+      });
+    }
+    if (val.format === 'COPA' && val.participants.length < 3) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Copa exige ao menos 3 times',
+        path: ['participants'],
+      });
+    }
+    if (val.doubleRoundRobin && val.format === 'MATA_MATA') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Ida e volta não se aplica ao mata-mata',
+        path: ['doubleRoundRobin'],
+      });
+    }
+  });
+
+export const UpdateChampionshipSchema = z
+  .object({
+    name: z.string().min(1).max(100).optional(),
+    status: z.enum(['EM_ANDAMENTO', 'FINALIZADO']).optional(),
+  })
+  .refine((val) => val.name !== undefined || val.status !== undefined, {
+    message: 'Nenhum campo para atualizar',
+  });
+
+export const UpdateChampionshipGameSchema = z
+  .object({
+    homeScore: z.number().int().min(0).max(99).optional(),
+    awayScore: z.number().int().min(0).max(99).optional(),
+    winnerByPenalties: z.enum(['HOME', 'AWAY']).nullable().optional(),
+    clear: z.boolean().optional(),
+  })
+  .refine(
+    (val) =>
+      val.clear === true ||
+      (val.homeScore !== undefined && val.awayScore !== undefined),
+    {
+      message:
+        'Informe placar de ambos os times (ou use clear=true para limpar)',
+    },
+  );
 
 export const parseBody = <T>(schema: z.ZodType<T>, body: string | null | undefined): T => {
   let parsed: unknown;

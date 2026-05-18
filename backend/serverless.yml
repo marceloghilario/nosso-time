@@ -19,6 +19,7 @@ provider:
     GAMES_TABLE: ${self:service}-games-${self:provider.stage}
     MEDIA_TABLE: ${self:service}-media-${self:provider.stage}
     FORMATIONS_TABLE: ${self:service}-formations-${self:provider.stage}
+    CHAMPIONSHIPS_TABLE: ${self:service}-championships-${self:provider.stage}
     PHOTOS_BUCKET: ${self:service}-photos-${self:provider.stage}-${aws:accountId}
     COGNITO_USER_POOL_ID: !Ref CognitoUserPool
     COGNITO_CLIENT_ID: !Ref CognitoUserPoolClient
@@ -62,11 +63,13 @@ provider:
             - !GetAtt GamesTable.Arn
             - !GetAtt MediaTable.Arn
             - !GetAtt FormationsTable.Arn
+            - !GetAtt ChampionshipsTable.Arn
             - !Sub '${TeamsTable.Arn}/index/*'
             - !Sub '${PlayersTable.Arn}/index/*'
             - !Sub '${GamesTable.Arn}/index/*'
             - !Sub '${MediaTable.Arn}/index/*'
             - !Sub '${FormationsTable.Arn}/index/*'
+            - !Sub '${ChampionshipsTable.Arn}/index/*'
         - Effect: Allow
           Action:
             - s3:PutObject
@@ -283,6 +286,55 @@ functions:
           path: /formacoes/{shareToken}
           method: get
 
+  createChampionship:
+    handler: src/functions/championships/create.handler
+    events:
+      - httpApi:
+          path: /championships
+          method: post
+          authorizer:
+            name: cognitoAuthorizer
+  listChampionships:
+    handler: src/functions/championships/list.handler
+    events:
+      - httpApi:
+          path: /championships
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+  getChampionship:
+    handler: src/functions/championships/get.handler
+    events:
+      - httpApi:
+          path: /championships/{championshipId}
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+  updateChampionship:
+    handler: src/functions/championships/update.handler
+    events:
+      - httpApi:
+          path: /championships/{championshipId}
+          method: put
+          authorizer:
+            name: cognitoAuthorizer
+  deleteChampionship:
+    handler: src/functions/championships/delete.handler
+    events:
+      - httpApi:
+          path: /championships/{championshipId}
+          method: delete
+          authorizer:
+            name: cognitoAuthorizer
+  updateChampionshipGame:
+    handler: src/functions/championships/updateGame.handler
+    events:
+      - httpApi:
+          path: /championships/{championshipId}/games/{gameId}
+          method: put
+          authorizer:
+            name: cognitoAuthorizer
+
 resources:
   Resources:
     TeamsTable:
@@ -412,6 +464,27 @@ resources:
           - IndexName: shareToken-index
             KeySchema:
               - AttributeName: shareToken
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+    ChampionshipsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.CHAMPIONSHIPS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: championshipId
+            AttributeType: S
+          - AttributeName: ownerId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: championshipId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: ownerId-index
+            KeySchema:
+              - AttributeName: ownerId
                 KeyType: HASH
             Projection:
               ProjectionType: ALL

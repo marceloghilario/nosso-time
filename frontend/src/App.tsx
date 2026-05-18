@@ -16,6 +16,9 @@ import Explore from './pages/Explore';
 import PublicTeamDetail from './pages/PublicTeamDetail';
 import Tactica from './pages/Tactica';
 import PublicFormationPage from './pages/PublicFormation';
+import ChampionshipsPage from './pages/Championships';
+import CreateChampionship from './pages/CreateChampionship';
+import ChampionshipDetail from './pages/ChampionshipDetail';
 
 function HomeRedirect() {
   const { isAuthenticated } = useAuth();
@@ -50,6 +53,12 @@ export default function App() {
               <Route path="/teams/:teamId/tatica" element={<Tactica />} />
               <Route path="/explorar" element={<Explore />} />
               <Route path="/explorar/:teamId" element={<PublicTeamDetail />} />
+              <Route path="/campeonatos" element={<ChampionshipsPage />} />
+              <Route path="/campeonatos/novo" element={<CreateChampionship />} />
+              <Route
+                path="/campeonatos/:championshipId"
+                element={<ChampionshipDetail />}
+              />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

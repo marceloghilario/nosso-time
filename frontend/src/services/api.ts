@@ -1,6 +1,8 @@
 import { API_URL, AUTH_STORAGE_KEY } from '../utils/constants';
 import type {
   AuthSession,
+  Championship,
+  ChampionshipFormat,
   Formation,
   FormationScheme,
   Game,
@@ -334,4 +336,57 @@ export const api = {
     request<PublicFormationView>(`/formacoes/${shareToken}`, {
       auth: false,
     }),
+
+  listChampionships: () => request<Championship[]>('/championships'),
+  getChampionship: (championshipId: string) =>
+    request<Championship>(`/championships/${championshipId}`),
+  createChampionship: (input: CreateChampionshipInput) =>
+    request<Championship>('/championships', { method: 'POST', body: input }),
+  updateChampionship: (
+    championshipId: string,
+    input: UpdateChampionshipInput,
+  ) =>
+    request<Championship>(`/championships/${championshipId}`, {
+      method: 'PUT',
+      body: input,
+    }),
+  deleteChampionship: (championshipId: string) =>
+    request<{ message: string }>(`/championships/${championshipId}`, {
+      method: 'DELETE',
+    }),
+  updateChampionshipGame: (
+    championshipId: string,
+    gameId: string,
+    input: UpdateChampionshipGameInput,
+  ) =>
+    request<Championship>(
+      `/championships/${championshipId}/games/${gameId}`,
+      { method: 'PUT', body: input },
+    ),
 };
+
+export interface ChampionshipParticipantInput {
+  teamId: string;
+  teamName: string;
+  logoUrl?: string;
+  isMine?: boolean;
+}
+
+export interface CreateChampionshipInput {
+  name: string;
+  format: ChampionshipFormat;
+  doubleRoundRobin?: boolean;
+  participants: ChampionshipParticipantInput[];
+}
+
+export interface UpdateChampionshipInput {
+  name?: string;
+  status?: 'EM_ANDAMENTO' | 'FINALIZADO';
+}
+
+export interface UpdateChampionshipGameInput {
+  homeScore?: number;
+  awayScore?: number;
+  winnerByPenalties?: 'HOME' | 'AWAY' | null;
+  clear?: boolean;
+}
