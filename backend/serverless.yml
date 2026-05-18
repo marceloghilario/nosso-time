@@ -18,6 +18,7 @@ provider:
     PLAYERS_TABLE: ${self:service}-players-${self:provider.stage}
     GAMES_TABLE: ${self:service}-games-${self:provider.stage}
     MEDIA_TABLE: ${self:service}-media-${self:provider.stage}
+    FORMATIONS_TABLE: ${self:service}-formations-${self:provider.stage}
     PHOTOS_BUCKET: ${self:service}-photos-${self:provider.stage}-${aws:accountId}
     COGNITO_USER_POOL_ID: !Ref CognitoUserPool
     COGNITO_CLIENT_ID: !Ref CognitoUserPoolClient
@@ -60,10 +61,12 @@ provider:
             - !GetAtt PlayersTable.Arn
             - !GetAtt GamesTable.Arn
             - !GetAtt MediaTable.Arn
+            - !GetAtt FormationsTable.Arn
             - !Sub '${TeamsTable.Arn}/index/*'
             - !Sub '${PlayersTable.Arn}/index/*'
             - !Sub '${GamesTable.Arn}/index/*'
             - !Sub '${MediaTable.Arn}/index/*'
+            - !Sub '${FormationsTable.Arn}/index/*'
         - Effect: Allow
           Action:
             - s3:PutObject
@@ -133,6 +136,23 @@ functions:
           authorizer:
             name: cognitoAuthorizer
 
+  exploreSearchTeams:
+    handler: src/functions/explore/searchTeams.handler
+    events:
+      - httpApi:
+          path: /explore/teams
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+  exploreGetTeam:
+    handler: src/functions/explore/getTeam.handler
+    events:
+      - httpApi:
+          path: /explore/teams/{teamId}
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+
   createPlayer:
     handler: src/functions/players/create.handler
     events:
@@ -164,6 +184,22 @@ functions:
       - httpApi:
           path: /teams/{teamId}/games
           method: get
+          authorizer:
+            name: cognitoAuthorizer
+  getGame:
+    handler: src/functions/games/get.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/games/{gameId}
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+  updateGame:
+    handler: src/functions/games/update.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/games/{gameId}
+          method: put
           authorizer:
             name: cognitoAuthorizer
 
@@ -199,6 +235,53 @@ functions:
           method: get
           authorizer:
             name: cognitoAuthorizer
+
+  createFormation:
+    handler: src/functions/formations/create.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/formations
+          method: post
+          authorizer:
+            name: cognitoAuthorizer
+  listFormations:
+    handler: src/functions/formations/list.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/formations
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+  getActiveFormation:
+    handler: src/functions/formations/getActive.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/formations/active
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+  updateFormation:
+    handler: src/functions/formations/update.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/formations/{formationId}
+          method: put
+          authorizer:
+            name: cognitoAuthorizer
+  deleteFormation:
+    handler: src/functions/formations/delete.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/formations/{formationId}
+          method: delete
+          authorizer:
+            name: cognitoAuthorizer
+  getFormationByShareToken:
+    handler: src/functions/formations/getByShareToken.handler
+    events:
+      - httpApi:
+          path: /formacoes/{shareToken}
+          method: get
 
 resources:
   Resources:
@@ -301,6 +384,35 @@ resources:
                 KeyType: HASH
               - AttributeName: createdAt
                 KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    FormationsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.FORMATIONS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: formationId
+            AttributeType: S
+          - AttributeName: teamId
+            AttributeType: S
+          - AttributeName: shareToken
+            AttributeType: S
+        KeySchema:
+          - AttributeName: formationId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: teamId-index
+            KeySchema:
+              - AttributeName: teamId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: shareToken-index
+            KeySchema:
+              - AttributeName: shareToken
+                KeyType: HASH
             Projection:
               ProjectionType: ALL
 

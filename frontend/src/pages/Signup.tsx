@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trophy, UserPlus } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/Toast';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -36,14 +36,16 @@ export default function Signup() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-primary-50 to-white">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-xl bg-primary-600 flex items-center justify-center">
-            <Trophy className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Nosso Time</h1>
-            <p className="text-sm text-gray-500">Crie sua conta</p>
-          </div>
+        <div className="flex flex-col items-center text-center mb-6">
+          <img
+            src="/logo-512.png"
+            alt="Nosso Time"
+            width={140}
+            height={140}
+            className="h-32 w-32 sm:h-36 sm:w-36 object-contain"
+          />
+          <h1 className="mt-3 text-xl font-bold text-gray-900">Nosso Time</h1>
+          <p className="text-sm text-gray-500">Crie sua conta</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

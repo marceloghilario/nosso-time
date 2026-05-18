@@ -1,5 +1,6 @@
 import { z, ZodError } from 'zod';
 import { HttpError } from './response';
+import { FORMATION_SCHEMES } from '../models';
 
 export const SignupSchema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -60,6 +61,18 @@ export const GameResultSchema = z.object({
   scoreAgainst: z.number().int().min(0).max(99),
 });
 
+export const GameGoalSchema = z.object({
+  playerId: z.string().min(1, 'Jogador é obrigatório'),
+  minute: z.number().int().min(0).max(200).optional(),
+});
+
+export const GameGuestSchema = z.object({
+  guestId: z.string().min(1).optional(),
+  name: z.string().min(1, 'Nome do convidado é obrigatório').max(100),
+  position: PlayerPositionSchema.optional(),
+  number: z.number().int().min(0).max(999).optional(),
+});
+
 export const CreateGameSchema = z
   .object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida (YYYY-MM-DD)'),
@@ -72,6 +85,37 @@ export const CreateGameSchema = z
   .refine(
     (val) => val.status !== 'REALIZADO' || val.result !== undefined,
     { message: 'Resultado é obrigatório para jogos realizados', path: ['result'] },
+  );
+
+export const UpdateGameSchema = z
+  .object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida (YYYY-MM-DD)'),
+    time: z.string().regex(/^\d{2}:\d{2}$/, 'Horário inválido (HH:MM)'),
+    location: z.string().min(1, 'Local é obrigatório').max(200),
+    opponent: z.string().min(1, 'Adversário é obrigatório').max(100),
+    status: GameStatusSchema,
+    result: GameResultSchema.optional(),
+    goals: z.array(GameGoalSchema).max(99).optional(),
+    confirmedPlayerIds: z.array(z.string().min(1)).max(100).optional(),
+    guests: z.array(GameGuestSchema).max(50).optional(),
+  })
+  .refine(
+    (val) => val.status !== 'REALIZADO' || val.result !== undefined,
+    { message: 'Resultado é obrigatório para jogos realizados', path: ['result'] },
+  )
+  .refine(
+    (val) => val.status === 'REALIZADO' || !val.goals || val.goals.length === 0,
+    { message: 'Gols só podem ser informados em jogos realizados', path: ['goals'] },
+  )
+  .refine(
+    (val) =>
+      !val.result ||
+      !val.goals ||
+      val.goals.length <= val.result.scoreFor,
+    {
+      message: 'Quantidade de gols não pode ser maior que o placar do time',
+      path: ['goals'],
+    },
   );
 
 export const MediaTypeSchema = z.enum(['PHOTO', 'VIDEO']);
@@ -91,6 +135,25 @@ export const CreateMediaSchema = z.object({
   gameId: z.string().min(1).optional(),
   caption: z.string().max(500).optional(),
 });
+
+export const FormationSchemeSchema = z.enum(FORMATION_SCHEMES);
+
+export const FormationPositionSchema = z.object({
+  playerId: z.string().min(1),
+  x: z.number().min(0).max(100),
+  y: z.number().min(0).max(100),
+});
+
+export const CreateFormationSchema = z.object({
+  name: z.string().min(1, 'Nome da formação é obrigatório').max(100),
+  scheme: FormationSchemeSchema,
+  playerPositions: z
+    .array(FormationPositionSchema)
+    .max(30, 'Muitos jogadores na formação'),
+  isActive: z.boolean().optional(),
+});
+
+export const UpdateFormationSchema = CreateFormationSchema;
 
 export const parseBody = <T>(schema: z.ZodType<T>, body: string | null | undefined): T => {
   let parsed: unknown;

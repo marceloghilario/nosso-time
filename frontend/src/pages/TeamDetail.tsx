@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Camera, Plus, Users } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Calendar, Camera, LayoutGrid, Plus, Users } from 'lucide-react';
 import { api } from '../services/api';
 import { useApi } from '../hooks/useApi';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -14,6 +14,7 @@ type Tab = 'players' | 'games' | 'gallery';
 
 export default function TeamDetail() {
   const { teamId = '' } = useParams<{ teamId: string }>();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('players');
 
   const teamReq = useApi(() => api.getTeam(teamId), [teamId]);
@@ -87,6 +88,12 @@ export default function TeamDetail() {
                 label="Jogadores"
               />
               <TabButton
+                active={false}
+                onClick={() => navigate(`/teams/${teamId}/tatica`)}
+                icon={<LayoutGrid className="w-4 h-4" />}
+                label="Campo"
+              />
+              <TabButton
                 active={tab === 'games'}
                 onClick={() => setTab('games')}
                 icon={<Calendar className="w-4 h-4" />}
@@ -122,7 +129,9 @@ export default function TeamDetail() {
                   />
                   {gamesReq.loading && <LoadingSpinner label="Carregando jogos..." />}
                   {gamesReq.error && <ErrorBox message={gamesReq.error} />}
-                  {gamesReq.data && <GameList games={gamesReq.data} />}
+                  {gamesReq.data && (
+                    <GameList teamId={teamId} games={gamesReq.data} />
+                  )}
                 </>
               )}
               {tab === 'gallery' && (

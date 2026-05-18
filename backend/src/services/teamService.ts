@@ -2,6 +2,7 @@ import {
   GetCommand,
   PutCommand,
   QueryCommand,
+  ScanCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
@@ -114,6 +115,47 @@ export const teamService = {
     }
     if (team.ownerId !== ownerId) {
       throw new HttpError('Você não tem permissão para acessar este recurso', 403);
+    }
+    return team;
+  },
+
+  async searchPublic(query: string, limit = 50): Promise<Team[]> {
+    const needle = query.trim().toLowerCase();
+    const items: Team[] = [];
+    let lastKey: Record<string, unknown> | undefined;
+    const MAX_PAGES = 5;
+    let pages = 0;
+    do {
+      const result: {
+        Items?: Record<string, unknown>[];
+        LastEvaluatedKey?: Record<string, unknown>;
+      } = await docClient.send(
+        new ScanCommand({
+          TableName: TABLES.TEAMS,
+          Limit: 200,
+          ExclusiveStartKey: lastKey,
+        }),
+      );
+      const fromThisPage = (result.Items ?? []) as unknown as Team[];
+      const filtered = fromThisPage.filter(
+        (t) =>
+          typeof t.name === 'string' &&
+          (needle.length === 0 || t.name.toLowerCase().includes(needle)),
+      );
+      items.push(...filtered);
+      lastKey = result.LastEvaluatedKey;
+      pages += 1;
+      if (items.length >= limit || pages >= MAX_PAGES) break;
+    } while (lastKey);
+
+    items.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    return items.slice(0, limit);
+  },
+
+  async getPublicById(teamId: string): Promise<Team> {
+    const team = await this.getById(teamId);
+    if (!team) {
+      throw new HttpError('Recurso não encontrado', 404);
     }
     return team;
   },

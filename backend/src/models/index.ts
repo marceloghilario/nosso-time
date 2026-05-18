@@ -43,6 +43,19 @@ export interface GameResult {
   scoreAgainst: number;
 }
 
+export interface GameGoal {
+  playerId: string;
+  playerName: string;
+  minute?: number;
+}
+
+export interface GameGuest {
+  guestId: string;
+  name: string;
+  position?: PlayerPosition;
+  number?: number;
+}
+
 export interface Game {
   gameId: string;
   teamId: string;
@@ -52,6 +65,9 @@ export interface Game {
   opponent: string;
   status: GameStatus;
   result?: GameResult;
+  goals?: GameGoal[];
+  confirmedPlayerIds?: string[];
+  guests?: GameGuest[];
   createdAt: string;
   updatedAt: string;
 }
@@ -68,6 +84,46 @@ export interface Media {
   contentType: string;
   caption?: string;
   createdAt: string;
+}
+
+export const FORMATION_SCHEMES = [
+  '4-4-2',
+  '4-3-3',
+  '3-5-2',
+  '4-2-3-1',
+  '5-3-2',
+  '3-4-3',
+  '4-1-4-1',
+] as const;
+
+export type FormationScheme = (typeof FORMATION_SCHEMES)[number];
+
+export interface FormationPlayerPosition {
+  playerId: string;
+  playerName: string;
+  playerNumber?: number;
+  x: number;
+  y: number;
+}
+
+export interface Formation {
+  formationId: string;
+  teamId: string;
+  teamName: string;
+  name: string;
+  scheme: FormationScheme;
+  isActive: boolean;
+  playerPositions: FormationPlayerPosition[];
+  shareToken: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicFormationView {
+  teamName: string;
+  name: string;
+  scheme: FormationScheme;
+  playerPositions: FormationPlayerPosition[];
 }
 
 export interface ApiSuccess<T> {

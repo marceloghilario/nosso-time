@@ -1,6 +1,8 @@
 import { API_URL, AUTH_STORAGE_KEY } from '../utils/constants';
 import type {
   AuthSession,
+  Formation,
+  FormationScheme,
   Game,
   GameResult,
   GameStatus,
@@ -8,6 +10,9 @@ import type {
   MediaType,
   Player,
   PlayerPosition,
+  PublicFormationView,
+  PublicTeamDetail,
+  PublicTeamSummary,
   Team,
 } from '../types';
 
@@ -162,6 +167,30 @@ export interface CreateGameInput {
   result?: GameResult;
 }
 
+export interface GameGoalInput {
+  playerId: string;
+  minute?: number;
+}
+
+export interface GameGuestInput {
+  guestId?: string;
+  name: string;
+  position?: PlayerPosition;
+  number?: number;
+}
+
+export interface UpdateGameInput {
+  date: string;
+  time: string;
+  location: string;
+  opponent: string;
+  status: GameStatus;
+  result?: GameResult;
+  goals?: GameGoalInput[];
+  confirmedPlayerIds?: string[];
+  guests?: GameGuestInput[];
+}
+
 export interface UploadUrlInput {
   contentType: string;
   fileName: string;
@@ -179,6 +208,19 @@ export interface CreateMediaInput {
   type: MediaType;
   gameId?: string;
   caption?: string;
+}
+
+export interface FormationPositionInput {
+  playerId: string;
+  x: number;
+  y: number;
+}
+
+export interface SaveFormationInput {
+  name: string;
+  scheme: FormationScheme;
+  playerPositions: FormationPositionInput[];
+  isActive: boolean;
 }
 
 export const api = {
@@ -221,6 +263,13 @@ export const api = {
       method: 'POST',
       body: input,
     }),
+  getGame: (teamId: string, gameId: string) =>
+    request<Game>(`/teams/${teamId}/games/${gameId}`),
+  updateGame: (teamId: string, gameId: string, input: UpdateGameInput) =>
+    request<Game>(`/teams/${teamId}/games/${gameId}`, {
+      method: 'PUT',
+      body: input,
+    }),
 
   getMediaUploadUrl: (teamId: string, input: UploadUrlInput) =>
     request<UploadUrlResponse>(`/teams/${teamId}/media/upload-url`, {
@@ -237,6 +286,13 @@ export const api = {
   listMediaByGame: (teamId: string, gameId: string) =>
     request<Media[]>(`/teams/${teamId}/games/${gameId}/media`),
 
+  searchPublicTeams: (query: string) => {
+    const qs = query ? `?q=${encodeURIComponent(query)}` : '';
+    return request<PublicTeamSummary[]>(`/explore/teams${qs}`);
+  },
+  getPublicTeam: (teamId: string) =>
+    request<PublicTeamDetail>(`/explore/teams/${teamId}`),
+
   uploadToS3: async (
     uploadUrl: string,
     file: File,
@@ -251,4 +307,31 @@ export const api = {
       throw new ApiError('Falha ao enviar o arquivo para o S3', response.status);
     }
   },
+
+  listFormations: (teamId: string) =>
+    request<Formation[]>(`/teams/${teamId}/formations`),
+  getActiveFormation: (teamId: string) =>
+    request<Formation>(`/teams/${teamId}/formations/active`),
+  createFormation: (teamId: string, input: SaveFormationInput) =>
+    request<Formation>(`/teams/${teamId}/formations`, {
+      method: 'POST',
+      body: input,
+    }),
+  updateFormation: (
+    teamId: string,
+    formationId: string,
+    input: SaveFormationInput,
+  ) =>
+    request<Formation>(`/teams/${teamId}/formations/${formationId}`, {
+      method: 'PUT',
+      body: input,
+    }),
+  deleteFormation: (teamId: string, formationId: string) =>
+    request<{ message: string }>(`/teams/${teamId}/formations/${formationId}`, {
+      method: 'DELETE',
+    }),
+  getPublicFormation: (shareToken: string) =>
+    request<PublicFormationView>(`/formacoes/${shareToken}`, {
+      auth: false,
+    }),
 };

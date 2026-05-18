@@ -18,4 +18,5 @@ export const TABLES = {
   PLAYERS: process.env.PLAYERS_TABLE ?? '',
   GAMES: process.env.GAMES_TABLE ?? '',
   MEDIA: process.env.MEDIA_TABLE ?? '',
+  FORMATIONS: process.env.FORMATIONS_TABLE ?? '',
 } as const;
