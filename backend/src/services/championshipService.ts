@@ -28,6 +28,7 @@ export interface ParticipantInput {
 export interface CreateChampionshipInput {
   name: string;
   format: ChampionshipFormat;
+  doubleRoundRobin?: boolean;
   participants: ParticipantInput[];
 }
 
@@ -72,7 +73,8 @@ const phaseForRound = (
 const buildRoundRobinGames = (
   participants: ChampionshipParticipant[],
   phase: ChampionshipPhase,
-  group?: string,
+  group: string | undefined,
+  doubleRoundRobin: boolean,
 ): ChampionshipGame[] => {
   const games: ChampionshipGame[] = [];
   for (let i = 0; i < participants.length; i++) {
@@ -90,6 +92,19 @@ const buildRoundRobinGames = (
         awayTeamName: away.teamName,
         status: 'AGENDADO',
       });
+      if (doubleRoundRobin) {
+        games.push({
+          gameId: uuid(),
+          phase,
+          group,
+          round: 1,
+          homeTeamId: away.teamId,
+          homeTeamName: away.teamName,
+          awayTeamId: home.teamId,
+          awayTeamName: home.teamName,
+          status: 'AGENDADO',
+        });
+      }
     }
   }
   return games;
@@ -123,6 +138,7 @@ const buildKnockoutFirstRound = (
 };
 
 const groupSizeFor = (n: number): number => {
+  if (n <= 5) return n;
   if (n <= 6) return 3;
   return 4;
 };
@@ -132,7 +148,7 @@ const buildGroups = (
 ): ChampionshipGroup[] => {
   const n = participants.length;
   const size = groupSizeFor(n);
-  const numGroups = Math.ceil(n / size);
+  const numGroups = Math.max(1, Math.ceil(n / size));
   const shuffled = shuffle(participants);
   const groups: ChampionshipGroup[] = [];
   for (let i = 0; i < numGroups; i++) {
@@ -150,9 +166,17 @@ const buildGroups = (
 const generateFixtures = (
   participants: ChampionshipParticipant[],
   format: ChampionshipFormat,
+  doubleRoundRobin: boolean,
 ): { games: ChampionshipGame[]; groups?: ChampionshipGroup[] } => {
   if (format === 'PONTOS_CORRIDOS') {
-    return { games: buildRoundRobinGames(participants, 'RR') };
+    return {
+      games: buildRoundRobinGames(
+        participants,
+        'RR',
+        undefined,
+        doubleRoundRobin,
+      ),
+    };
   }
   if (format === 'MATA_MATA') {
     return { games: buildKnockoutFirstRound(participants) };
@@ -163,7 +187,9 @@ const generateFixtures = (
     const teams = group.teamIds
       .map((id) => participants.find((p) => p.teamId === id))
       .filter((p): p is ChampionshipParticipant => Boolean(p));
-    games.push(...buildRoundRobinGames(teams, 'GROUP', group.name));
+    games.push(
+      ...buildRoundRobinGames(teams, 'GROUP', group.name, doubleRoundRobin),
+    );
   }
   return { games, groups };
 };
@@ -381,10 +407,19 @@ export const championshipService = {
     if (input.format === 'MATA_MATA' && participants.length < 2) {
       throw new HttpError('Mata-mata exige ao menos 2 times', 400);
     }
-    if (input.format === 'COPA' && participants.length < 4) {
-      throw new HttpError('Copa exige ao menos 4 times', 400);
+    if (input.format === 'COPA' && participants.length < 3) {
+      throw new HttpError('Copa exige ao menos 3 times', 400);
     }
-    const { games, groups } = generateFixtures(participants, input.format);
+    if (input.format === 'PONTOS_CORRIDOS' && participants.length < 3) {
+      throw new HttpError('Pontos corridos exige ao menos 3 times', 400);
+    }
+    const doubleRoundRobin =
+      input.doubleRoundRobin === true && input.format !== 'MATA_MATA';
+    const { games, groups } = generateFixtures(
+      participants,
+      input.format,
+      doubleRoundRobin,
+    );
     const now = new Date().toISOString();
     const championship: Championship = {
       championshipId: uuid(),
@@ -397,6 +432,7 @@ export const championshipService = {
       createdAt: now,
       updatedAt: now,
     };
+    if (doubleRoundRobin) championship.doubleRoundRobin = true;
     if (groups) championship.groups = groups;
     await docClient.send(
       new PutCommand({

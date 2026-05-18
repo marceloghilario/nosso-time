@@ -23,9 +23,9 @@ const FORMAT_LABEL: Record<ChampionshipFormat, string> = {
 };
 
 const FORMAT_HELP: Record<ChampionshipFormat, string> = {
-  PONTOS_CORRIDOS: 'Cada time enfrenta todos uma vez. Mínimo 3 times.',
+  PONTOS_CORRIDOS: 'Cada time enfrenta todos. Mínimo 3 times.',
   MATA_MATA: 'Sorteio de chaveamento. Mínimo 2, ideal 4/8/16 times.',
-  COPA: 'Grupos de até 4 times, top 2 avançam pro mata-mata. Mín. 4 times.',
+  COPA: 'Grupos + mata-mata. Mínimo 3 times (1 grupo, top 2 vão à Final).',
 };
 
 export default function CreateChampionship() {
@@ -34,6 +34,7 @@ export default function CreateChampionship() {
 
   const [name, setName] = useState('');
   const [format, setFormat] = useState<ChampionshipFormat>('PONTOS_CORRIDOS');
+  const [doubleRoundRobin, setDoubleRoundRobin] = useState(false);
   const [selected, setSelected] = useState<ChampionshipParticipantInput[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -103,8 +104,9 @@ export default function CreateChampionship() {
   };
 
   const minParticipants =
-    format === 'PONTOS_CORRIDOS' ? 3 : format === 'COPA' ? 4 : 2;
+    format === 'PONTOS_CORRIDOS' ? 3 : format === 'COPA' ? 3 : 2;
   const enough = selected.length >= minParticipants;
+  const supportsIdaEVolta = format !== 'MATA_MATA';
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -126,6 +128,9 @@ export default function CreateChampionship() {
       format,
       participants: selected,
     };
+    if (supportsIdaEVolta && doubleRoundRobin) {
+      payload.doubleRoundRobin = true;
+    }
     setSaving(true);
     try {
       const championship = await api.createChampionship(payload);
@@ -184,7 +189,10 @@ export default function CreateChampionship() {
                 <button
                   type="button"
                   key={f}
-                  onClick={() => setFormat(f)}
+                  onClick={() => {
+                    setFormat(f);
+                    if (f === 'MATA_MATA') setDoubleRoundRobin(false);
+                  }}
                   className={`text-left rounded-lg border px-3 py-2 transition-colors ${
                     active
                       ? 'border-primary-500 bg-primary-50'
@@ -206,6 +214,26 @@ export default function CreateChampionship() {
             })}
           </div>
         </div>
+
+        {supportsIdaEVolta && (
+          <label className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 cursor-pointer hover:bg-gray-100">
+            <input
+              type="checkbox"
+              checked={doubleRoundRobin}
+              onChange={(e) => setDoubleRoundRobin(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+            <span className="text-sm">
+              <span className="font-medium text-gray-900">
+                Jogar ida e volta
+              </span>
+              <span className="block text-xs text-gray-500">
+                Cada confronto vira 2 jogos (mandante invertido).
+                {format === 'COPA' && ' Aplicado à fase de grupos.'}
+              </span>
+            </span>
+          </label>
+        )}
 
         <section className="space-y-3 border-t border-gray-100 pt-4">
           <div className="flex items-center justify-between">

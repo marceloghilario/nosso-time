@@ -128,7 +128,9 @@ export default function StandingsTable({ championship }: Props) {
       ))}
       {championship.format === 'COPA' && (
         <p className="text-xs text-gray-500">
-          Os 2 primeiros de cada grupo avançam ao mata-mata.
+          {championship.groups && championship.groups.length === 1
+            ? 'Os 2 primeiros avançam à Final.'
+            : 'Os 2 primeiros de cada grupo avançam ao mata-mata.'}
         </p>
       )}
     </div>

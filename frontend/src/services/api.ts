@@ -375,6 +375,7 @@ export interface ChampionshipParticipantInput {
 export interface CreateChampionshipInput {
   name: string;
   format: ChampionshipFormat;
+  doubleRoundRobin?: boolean;
   participants: ChampionshipParticipantInput[];
 }
 

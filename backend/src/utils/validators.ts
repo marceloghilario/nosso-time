@@ -164,14 +164,39 @@ export const ChampionshipParticipantInputSchema = z.object({
   isMine: z.boolean().optional(),
 });
 
-export const CreateChampionshipSchema = z.object({
-  name: z.string().min(1, 'Nome do campeonato é obrigatório').max(100),
-  format: ChampionshipFormatSchema,
-  participants: z
-    .array(ChampionshipParticipantInputSchema)
-    .min(3, 'Selecione ao menos 3 times')
-    .max(16, 'Máximo de 16 times nesta versão'),
-});
+export const CreateChampionshipSchema = z
+  .object({
+    name: z.string().min(1, 'Nome do campeonato é obrigatório').max(100),
+    format: ChampionshipFormatSchema,
+    doubleRoundRobin: z.boolean().optional(),
+    participants: z
+      .array(ChampionshipParticipantInputSchema)
+      .min(2, 'Selecione ao menos 2 times')
+      .max(16, 'Máximo de 16 times nesta versão'),
+  })
+  .superRefine((val, ctx) => {
+    if (val.format === 'PONTOS_CORRIDOS' && val.participants.length < 3) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Pontos corridos exige ao menos 3 times',
+        path: ['participants'],
+      });
+    }
+    if (val.format === 'COPA' && val.participants.length < 3) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Copa exige ao menos 3 times',
+        path: ['participants'],
+      });
+    }
+    if (val.doubleRoundRobin && val.format === 'MATA_MATA') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Ida e volta não se aplica ao mata-mata',
+        path: ['doubleRoundRobin'],
+      });
+    }
+  });
 
 export const UpdateChampionshipSchema = z
   .object({

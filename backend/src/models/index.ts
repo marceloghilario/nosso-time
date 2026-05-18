@@ -179,6 +179,7 @@ export interface Championship {
   name: string;
   format: ChampionshipFormat;
   status: ChampionshipStatus;
+  doubleRoundRobin?: boolean;
   participants: ChampionshipParticipant[];
   groups?: ChampionshipGroup[];
   games: ChampionshipGame[];
