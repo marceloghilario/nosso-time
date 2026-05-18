@@ -126,6 +126,66 @@ export interface PublicFormationView {
   playerPositions: FormationPlayerPosition[];
 }
 
+export const CHAMPIONSHIP_FORMATS = [
+  'PONTOS_CORRIDOS',
+  'MATA_MATA',
+  'COPA',
+] as const;
+
+export type ChampionshipFormat = (typeof CHAMPIONSHIP_FORMATS)[number];
+
+export type ChampionshipStatus = 'EM_ANDAMENTO' | 'FINALIZADO';
+
+export interface ChampionshipParticipant {
+  teamId: string;
+  teamName: string;
+  logoUrl?: string;
+  isMine: boolean;
+}
+
+export type ChampionshipPhase =
+  | 'RR'
+  | 'GROUP'
+  | 'R16'
+  | 'QF'
+  | 'SF'
+  | 'F'
+  | '3RD';
+
+export interface ChampionshipGame {
+  gameId: string;
+  phase: ChampionshipPhase;
+  group?: string;
+  round: number;
+  bracketIndex?: number;
+  homeTeamId?: string;
+  homeTeamName?: string;
+  awayTeamId?: string;
+  awayTeamName?: string;
+  homeScore?: number;
+  awayScore?: number;
+  winnerByPenalties?: 'HOME' | 'AWAY';
+  status: 'AGENDADO' | 'REALIZADO';
+}
+
+export interface ChampionshipGroup {
+  name: string;
+  teamIds: string[];
+}
+
+export interface Championship {
+  championshipId: string;
+  ownerId: string;
+  name: string;
+  format: ChampionshipFormat;
+  status: ChampionshipStatus;
+  participants: ChampionshipParticipant[];
+  groups?: ChampionshipGroup[];
+  games: ChampionshipGame[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ApiSuccess<T> {
   success: true;
   data: T;
