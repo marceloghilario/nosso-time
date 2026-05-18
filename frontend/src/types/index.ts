@@ -54,6 +54,13 @@ export interface GameGoal {
   minute?: number;
 }
 
+export interface GameGuest {
+  guestId: string;
+  name: string;
+  position?: PlayerPosition;
+  number?: number;
+}
+
 export interface Game {
   gameId: string;
   teamId: string;
@@ -64,6 +71,8 @@ export interface Game {
   status: GameStatus;
   result?: GameResult;
   goals?: GameGoal[];
+  confirmedPlayerIds?: string[];
+  guests?: GameGuest[];
   createdAt: string;
   updatedAt: string;
 }

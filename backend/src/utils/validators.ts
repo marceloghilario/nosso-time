@@ -66,6 +66,13 @@ export const GameGoalSchema = z.object({
   minute: z.number().int().min(0).max(200).optional(),
 });
 
+export const GameGuestSchema = z.object({
+  guestId: z.string().min(1).optional(),
+  name: z.string().min(1, 'Nome do convidado é obrigatório').max(100),
+  position: PlayerPositionSchema.optional(),
+  number: z.number().int().min(0).max(999).optional(),
+});
+
 export const CreateGameSchema = z
   .object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida (YYYY-MM-DD)'),
@@ -89,6 +96,8 @@ export const UpdateGameSchema = z
     status: GameStatusSchema,
     result: GameResultSchema.optional(),
     goals: z.array(GameGoalSchema).max(99).optional(),
+    confirmedPlayerIds: z.array(z.string().min(1)).max(100).optional(),
+    guests: z.array(GameGuestSchema).max(50).optional(),
   })
   .refine(
     (val) => val.status !== 'REALIZADO' || val.result !== undefined,

@@ -172,6 +172,13 @@ export interface GameGoalInput {
   minute?: number;
 }
 
+export interface GameGuestInput {
+  guestId?: string;
+  name: string;
+  position?: PlayerPosition;
+  number?: number;
+}
+
 export interface UpdateGameInput {
   date: string;
   time: string;
@@ -180,6 +187,8 @@ export interface UpdateGameInput {
   status: GameStatus;
   result?: GameResult;
   goals?: GameGoalInput[];
+  confirmedPlayerIds?: string[];
+  guests?: GameGuestInput[];
 }
 
 export interface UploadUrlInput {

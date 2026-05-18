@@ -10,12 +10,24 @@ import {
   Upload,
 } from 'lucide-react';
 import { api, ApiError } from '../services/api';
+import type { GameGuestInput } from '../services/api';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/Toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import PhotoGallery from '../components/PhotoGallery';
-import type { GameGoal, GameStatus, Player } from '../types';
-import { GAME_STATUS_LABELS } from '../utils/constants';
+import type {
+  GameGoal,
+  GameGuest,
+  GameStatus,
+  Player,
+  PlayerPosition,
+} from '../types';
+import { PLAYER_POSITIONS } from '../types';
+import {
+  GAME_STATUS_LABELS,
+  PLAYER_POSITION_LABELS,
+  comparePlayers,
+} from '../utils/constants';
 
 interface GoalDraft {
   key: string;
@@ -23,13 +35,29 @@ interface GoalDraft {
   minute: string;
 }
 
-const newGoalKey = (): string =>
+interface GuestDraft {
+  key: string;
+  guestId?: string;
+  name: string;
+  position: PlayerPosition | '';
+  number: string;
+}
+
+const newKey = (): string =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-const toDraft = (g: GameGoal): GoalDraft => ({
-  key: newGoalKey(),
+const toGoalDraft = (g: GameGoal): GoalDraft => ({
+  key: newKey(),
   playerId: g.playerId,
   minute: g.minute !== undefined ? String(g.minute) : '',
+});
+
+const toGuestDraft = (g: GameGuest): GuestDraft => ({
+  key: newKey(),
+  guestId: g.guestId,
+  name: g.name,
+  position: g.position ?? '',
+  number: g.number !== undefined ? String(g.number) : '',
 });
 
 export default function GameDetail() {
@@ -54,6 +82,8 @@ export default function GameDetail() {
   const [scoreFor, setScoreFor] = useState('');
   const [scoreAgainst, setScoreAgainst] = useState('');
   const [goals, setGoals] = useState<GoalDraft[]>([]);
+  const [confirmedPlayerIds, setConfirmedPlayerIds] = useState<string[]>([]);
+  const [guests, setGuests] = useState<GuestDraft[]>([]);
   const [saving, setSaving] = useState(false);
 
   const [file, setFile] = useState<File | null>(null);
@@ -83,8 +113,73 @@ export default function GameDetail() {
         ? String(game.result.scoreAgainst)
         : '',
     );
-    setGoals((game.goals ?? []).map(toDraft));
+    setGoals((game.goals ?? []).map(toGoalDraft));
+    setConfirmedPlayerIds(game.confirmedPlayerIds ?? []);
+    setGuests((game.guests ?? []).map(toGuestDraft));
   }
+
+  const sortedPlayers = useMemo(
+    () => [...players].sort(comparePlayers),
+    [players],
+  );
+
+  const confirmedSet = useMemo(
+    () => new Set(confirmedPlayerIds),
+    [confirmedPlayerIds],
+  );
+
+  const togglePlayerConfirmed = (playerId: string) => {
+    setConfirmedPlayerIds((prev) =>
+      prev.includes(playerId)
+        ? prev.filter((id) => id !== playerId)
+        : [...prev, playerId],
+    );
+  };
+
+  const addGuest = () => {
+    const guestId =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `guest-${newKey()}`;
+    setGuests((prev) => [
+      ...prev,
+      { key: newKey(), guestId, name: '', position: '', number: '' },
+    ]);
+  };
+
+  const updateGuest = (
+    key: string,
+    patch: Partial<Omit<GuestDraft, 'key'>>,
+  ) => {
+    setGuests((prev) =>
+      prev.map((g) => (g.key === key ? { ...g, ...patch } : g)),
+    );
+  };
+
+  const removeGuest = (key: string) => {
+    setGuests((prev) => prev.filter((g) => g.key !== key));
+  };
+
+  const scorerOptions = useMemo(() => {
+    type Option = { id: string; label: string };
+    const opts: Option[] = [];
+    for (const p of sortedPlayers) {
+      if (!confirmedSet.has(p.playerId)) continue;
+      const numberPart = p.number !== undefined ? `#${p.number} ` : '';
+      opts.push({ id: p.playerId, label: `${numberPart}${p.name}` });
+    }
+    for (const guest of guests) {
+      if (!guest.guestId) continue;
+      const name = guest.name.trim();
+      if (!name) continue;
+      const numberPart = guest.number ? `#${guest.number} ` : '';
+      opts.push({
+        id: guest.guestId,
+        label: `${numberPart}${name} (convidado)`,
+      });
+    }
+    return opts;
+  }, [sortedPlayers, confirmedSet, guests]);
 
   const handleScoreChange = (
     setter: (value: string) => void,
@@ -99,7 +194,7 @@ export default function GameDetail() {
   const addGoal = () => {
     setGoals((prev) => [
       ...prev,
-      { key: newGoalKey(), playerId: players[0]?.playerId ?? '', minute: '' },
+      { key: newKey(), playerId: scorerOptions[0]?.id ?? '', minute: '' },
     ]);
   };
 
@@ -155,6 +250,18 @@ export default function GameDetail() {
               })
           : undefined;
 
+      const payloadGuests: GameGuestInput[] = [];
+      for (const g of guests) {
+        const name = g.name.trim();
+        if (!name) continue;
+        const number = g.number ? Number.parseInt(g.number, 10) : NaN;
+        const guest: GameGuestInput = { name };
+        if (g.guestId) guest.guestId = g.guestId;
+        if (g.position) guest.position = g.position;
+        if (Number.isFinite(number)) guest.number = number;
+        payloadGuests.push(guest);
+      }
+
       await api.updateGame(teamId, gameId, {
         date,
         time,
@@ -163,6 +270,8 @@ export default function GameDetail() {
         status: effectiveStatus,
         result,
         goals: payloadGoals,
+        confirmedPlayerIds,
+        guests: payloadGuests,
       });
       showSuccess('Jogo atualizado');
       gameReq.refetch();
@@ -313,7 +422,135 @@ export default function GameDetail() {
               </p>
             </section>
 
-            <section className="space-y-2">
+            <section className="space-y-2 border-t border-gray-100 pt-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Jogadores confirmados
+                </h3>
+                <span className="text-[11px] text-gray-500">
+                  {confirmedPlayerIds.length}/{players.length}
+                </span>
+              </div>
+              {players.length === 0 ? (
+                <p className="text-xs text-gray-500">
+                  Cadastre jogadores no time para confirmá-los neste jogo.
+                </p>
+              ) : (
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {sortedPlayers.map((p) => {
+                    const checked = confirmedSet.has(p.playerId);
+                    return (
+                      <li key={p.playerId}>
+                        <label
+                          className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm cursor-pointer ${
+                            checked
+                              ? 'border-primary-300 bg-primary-50 text-gray-900'
+                              : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => togglePlayerConfirmed(p.playerId)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                          <span className="min-w-0 truncate">
+                            {p.number !== undefined && (
+                              <span className="font-semibold text-gray-900">
+                                #{p.number}{' '}
+                              </span>
+                            )}
+                            {p.name}
+                            <span className="ml-1 text-[11px] text-gray-500">
+                              · {PLAYER_POSITION_LABELS[p.position]}
+                            </span>
+                          </span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+
+            <section className="space-y-2 border-t border-gray-100 pt-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Convidados (apenas este jogo)
+                </h3>
+                <button
+                  type="button"
+                  onClick={addGuest}
+                  className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Plus className="w-3 h-3" />
+                  Adicionar convidado
+                </button>
+              </div>
+              {guests.length === 0 ? (
+                <p className="text-xs text-gray-500">
+                  Adicione pessoas que vieram só nesse jogo. Convidados não
+                  entram na lista do time.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {guests.map((g) => (
+                    <li
+                      key={g.key}
+                      className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-2"
+                    >
+                      <input
+                        type="text"
+                        value={g.name}
+                        maxLength={100}
+                        placeholder="Nome do convidado"
+                        onChange={(e) =>
+                          updateGuest(g.key, { name: e.target.value })
+                        }
+                        className="flex-1 min-w-[10rem] rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <select
+                        value={g.position}
+                        onChange={(e) =>
+                          updateGuest(g.key, {
+                            position: e.target.value as PlayerPosition | '',
+                          })
+                        }
+                        className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      >
+                        <option value="">Posição</option>
+                        {PLAYER_POSITIONS.map((pos) => (
+                          <option key={pos} value={pos}>
+                            {PLAYER_POSITION_LABELS[pos]}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        min={0}
+                        max={999}
+                        placeholder="#"
+                        value={g.number}
+                        onChange={(e) =>
+                          updateGuest(g.key, { number: e.target.value })
+                        }
+                        className="w-16 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeGuest(g.key)}
+                        className="rounded-lg p-1.5 text-gray-400 hover:bg-rose-50 hover:text-rose-600"
+                        aria-label="Remover convidado"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="space-y-2 border-t border-gray-100 pt-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Autores dos gols
@@ -321,19 +558,20 @@ export default function GameDetail() {
                 <button
                   type="button"
                   onClick={addGoal}
-                  disabled={players.length === 0}
+                  disabled={scorerOptions.length === 0}
                   className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 >
                   <Plus className="w-3 h-3" />
                   Adicionar gol
                 </button>
               </div>
-              {players.length === 0 && (
+              {scorerOptions.length === 0 && (
                 <p className="text-xs text-gray-500">
-                  Cadastre jogadores no time para registrar autores de gols.
+                  Confirme jogadores do time ou adicione convidados para
+                  registrar autores de gols.
                 </p>
               )}
-              {goals.length === 0 && players.length > 0 && (
+              {goals.length === 0 && scorerOptions.length > 0 && (
                 <p className="text-xs text-gray-500">
                   Nenhum autor registrado. Gols sem autor (ex.: gol contra)
                   podem ficar só no placar acima.
@@ -355,10 +593,9 @@ export default function GameDetail() {
                       <option value="" disabled>
                         Selecione um jogador
                       </option>
-                      {players.map((p) => (
-                        <option key={p.playerId} value={p.playerId}>
-                          {p.number !== undefined ? `#${p.number} ` : ''}
-                          {p.name}
+                      {scorerOptions.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.label}
                         </option>
                       ))}
                     </select>
