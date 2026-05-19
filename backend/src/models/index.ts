@@ -67,6 +67,11 @@ export interface GameLineup {
   positions: GameLineupPosition[];
 }
 
+export interface GameChampionshipRef {
+  championshipId: string;
+  championshipGameId: string;
+}
+
 export interface Game {
   gameId: string;
   teamId: string;
@@ -80,6 +85,7 @@ export interface Game {
   confirmedPlayerIds?: string[];
   guests?: GameGuest[];
   lineup?: GameLineup;
+  championshipRef?: GameChampionshipRef;
   createdAt: string;
   updatedAt: string;
 }
@@ -164,6 +170,18 @@ export type ChampionshipPhase =
   | 'F'
   | '3RD';
 
+export interface ChampionshipGameLink {
+  teamId: string;
+  gameId: string;
+}
+
+export interface ChampionshipGameGoal {
+  teamSide: 'HOME' | 'AWAY';
+  playerId: string;
+  playerName: string;
+  minute?: number;
+}
+
 export interface ChampionshipGame {
   gameId: string;
   phase: ChampionshipPhase;
@@ -178,6 +196,15 @@ export interface ChampionshipGame {
   awayScore?: number;
   winnerByPenalties?: 'HOME' | 'AWAY';
   status: 'AGENDADO' | 'REALIZADO';
+  date?: string;
+  time?: string;
+  location?: string;
+  goals?: ChampionshipGameGoal[];
+  links?: ChampionshipGameLink[];
+  /** @deprecated use links[] */
+  linkedGameId?: string;
+  /** @deprecated use links[] */
+  linkedTeamId?: string;
 }
 
 export interface ChampionshipGroup {

@@ -72,6 +72,11 @@ export interface GameLineup {
   positions: GameLineupPosition[];
 }
 
+export interface GameChampionshipRef {
+  championshipId: string;
+  championshipGameId: string;
+}
+
 export interface Game {
   gameId: string;
   teamId: string;
@@ -85,6 +90,7 @@ export interface Game {
   confirmedPlayerIds?: string[];
   guests?: GameGuest[];
   lineup?: GameLineup;
+  championshipRef?: GameChampionshipRef;
   createdAt: string;
   updatedAt: string;
 }
@@ -239,6 +245,18 @@ export interface ChampionshipParticipant {
   isMine: boolean;
 }
 
+export interface ChampionshipGameLink {
+  teamId: string;
+  gameId: string;
+}
+
+export interface ChampionshipGameGoal {
+  teamSide: 'HOME' | 'AWAY';
+  playerId: string;
+  playerName: string;
+  minute?: number;
+}
+
 export interface ChampionshipGame {
   gameId: string;
   phase: ChampionshipPhase;
@@ -253,6 +271,15 @@ export interface ChampionshipGame {
   awayScore?: number;
   winnerByPenalties?: 'HOME' | 'AWAY';
   status: 'AGENDADO' | 'REALIZADO';
+  date?: string;
+  time?: string;
+  location?: string;
+  goals?: ChampionshipGameGoal[];
+  links?: ChampionshipGameLink[];
+  /** @deprecated use links[] */
+  linkedGameId?: string;
+  /** @deprecated use links[] */
+  linkedTeamId?: string;
 }
 
 export interface ChampionshipGroup {
@@ -272,4 +299,14 @@ export interface Championship {
   games: ChampionshipGame[];
   createdAt: string;
   updatedAt: string;
+  /** True if the requesting user is the championship creator. */
+  viewerIsCreator?: boolean;
+}
+
+export interface ChampionshipGameTeamView {
+  linkedGameId: string | null;
+  confirmedPlayerIds: string[];
+  guests: GameGuest[];
+  lineup: GameLineup | null;
+  players: Player[];
 }

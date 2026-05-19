@@ -111,6 +111,7 @@ export default function GameDetail() {
     () => playersReq.data ?? [],
     [playersReq.data],
   );
+  const fromChampionship = Boolean(game?.championshipRef);
 
   const gameSnapshotKey = game ? `${game.gameId}:${game.updatedAt}` : null;
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
@@ -441,6 +442,17 @@ export default function GameDetail() {
             </div>
           </div>
 
+          {fromChampionship && (
+            <div className="rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-800">
+              <p className="font-semibold">Jogo de campeonato</p>
+              <p className="mt-0.5 text-primary-700">
+                Data, horário, local, placar e autores dos gols são gerenciados
+                pelo criador do campeonato. Você pode editar os jogadores
+                confirmados, convidados, escalação e fotos do seu time.
+              </p>
+            </div>
+          )}
+
           <form
             onSubmit={handleSave}
             className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-5"
@@ -464,7 +476,8 @@ export default function GameDetail() {
                     onChange={(e) =>
                       handleScoreChange(setScoreFor, e.target.value)
                     }
-                    className="w-20 sm:w-24 rounded-lg border border-gray-200 bg-white px-2 py-3 text-center text-3xl font-extrabold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    disabled={fromChampionship}
+                    className="w-20 sm:w-24 rounded-lg border border-gray-200 bg-white px-2 py-3 text-center text-3xl font-extrabold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 </div>
                 <span className="text-2xl font-bold text-gray-300 self-end pb-3">
@@ -484,14 +497,21 @@ export default function GameDetail() {
                     onChange={(e) =>
                       handleScoreChange(setScoreAgainst, e.target.value)
                     }
-                    className="w-20 sm:w-24 rounded-lg border border-gray-200 bg-white px-2 py-3 text-center text-3xl font-extrabold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    disabled={fromChampionship}
+                    className="w-20 sm:w-24 rounded-lg border border-gray-200 bg-white px-2 py-3 text-center text-3xl font-extrabold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 </div>
               </div>
               <p className="text-[11px] text-center text-gray-400">
-                Ao preencher o placar, o jogo é marcado como{' '}
-                <span className="font-semibold">Realizado</span>{' '}
-                automaticamente.
+                {fromChampionship
+                  ? 'Placar definido pelo criador do campeonato.'
+                  : (
+                    <>
+                      Ao preencher o placar, o jogo é marcado como{' '}
+                      <span className="font-semibold">Realizado</span>{' '}
+                      automaticamente.
+                    </>
+                  )}
               </p>
             </section>
 
@@ -671,7 +691,7 @@ export default function GameDetail() {
                 <button
                   type="button"
                   onClick={addGoal}
-                  disabled={scorerOptions.length === 0}
+                  disabled={scorerOptions.length === 0 || fromChampionship}
                   className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 >
                   <Plus className="w-3 h-3" />
@@ -701,7 +721,8 @@ export default function GameDetail() {
                       onChange={(e) =>
                         updateGoal(g.key, { playerId: e.target.value })
                       }
-                      className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      disabled={fromChampionship}
+                      className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
                     >
                       <option value="" disabled>
                         Selecione um jogador
@@ -721,12 +742,14 @@ export default function GameDetail() {
                       onChange={(e) =>
                         updateGoal(g.key, { minute: e.target.value })
                       }
-                      className="w-20 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      disabled={fromChampionship}
+                      className="w-20 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
                     />
                     <button
                       type="button"
                       onClick={() => removeGoal(g.key)}
-                      className="rounded-lg p-1.5 text-gray-400 hover:bg-rose-50 hover:text-rose-600"
+                      disabled={fromChampionship}
+                      className="rounded-lg p-1.5 text-gray-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-400"
                       aria-label="Remover gol"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -755,7 +778,8 @@ export default function GameDetail() {
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    disabled={fromChampionship}
+                    className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 </label>
                 <label className="block">
@@ -767,7 +791,8 @@ export default function GameDetail() {
                     required
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    disabled={fromChampionship}
+                    className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 </label>
               </div>
@@ -779,7 +804,8 @@ export default function GameDetail() {
                   maxLength={200}
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  disabled={fromChampionship}
+                  className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
                 />
               </label>
               <label className="block">
@@ -792,7 +818,8 @@ export default function GameDetail() {
                   maxLength={100}
                   value={opponent}
                   onChange={(e) => setOpponent(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  disabled={fromChampionship}
+                  className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
                 />
               </label>
               <label className="block">
@@ -802,7 +829,8 @@ export default function GameDetail() {
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as GameStatus)}
-                  className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  disabled={fromChampionship}
+                  className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-500"
                 >
                   <option value="AGENDADO">Agendado</option>
                   <option value="REALIZADO">Realizado</option>

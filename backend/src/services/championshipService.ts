@@ -8,10 +8,20 @@ import {
 import { v4 as uuid } from 'uuid';
 import { docClient, TABLES } from '../utils/dynamo';
 import { HttpError } from '../utils/response';
+import { gameService } from './gameService';
+import { playerService } from './playerService';
+import { teamService } from './teamService';
+import {
+  advanceKnockout,
+  getGameLinks,
+  maybeGenerateKnockoutFromGroups,
+  syncGamesFromChampionshipGame,
+} from './championshipSync';
 import type {
   Championship,
   ChampionshipFormat,
   ChampionshipGame,
+  ChampionshipGameGoal,
   ChampionshipGroup,
   ChampionshipParticipant,
   ChampionshipPhase,
@@ -38,9 +48,13 @@ export interface UpdateChampionshipInput {
 }
 
 export interface UpdateChampionshipGameInput {
+  date?: string | null;
+  time?: string | null;
+  location?: string | null;
   homeScore?: number;
   awayScore?: number;
   winnerByPenalties?: 'HOME' | 'AWAY' | null;
+  goals?: ChampionshipGameGoal[];
   clear?: boolean;
 }
 
@@ -194,170 +208,6 @@ const generateFixtures = (
   return { games, groups };
 };
 
-const isGroupComplete = (
-  games: ChampionshipGame[],
-  groupName: string,
-): boolean =>
-  games
-    .filter((g) => g.phase === 'GROUP' && g.group === groupName)
-    .every((g) => g.status === 'REALIZADO');
-
-const standingsForGroup = (
-  championship: Championship,
-  groupName: string,
-): { teamId: string; teamName: string; points: number; gd: number; gf: number }[] => {
-  const group = championship.groups?.find((g) => g.name === groupName);
-  if (!group) return [];
-  const standings = group.teamIds.map((teamId) => {
-    const participant = championship.participants.find(
-      (p) => p.teamId === teamId,
-    );
-    return {
-      teamId,
-      teamName: participant?.teamName ?? '',
-      points: 0,
-      gd: 0,
-      gf: 0,
-    };
-  });
-  const groupGames = championship.games.filter(
-    (g) => g.phase === 'GROUP' && g.group === groupName,
-  );
-  for (const g of groupGames) {
-    if (g.status !== 'REALIZADO' || g.homeScore === undefined || g.awayScore === undefined)
-      continue;
-    const home = standings.find((s) => s.teamId === g.homeTeamId);
-    const away = standings.find((s) => s.teamId === g.awayTeamId);
-    if (!home || !away) continue;
-    home.gf += g.homeScore;
-    away.gf += g.awayScore;
-    home.gd += g.homeScore - g.awayScore;
-    away.gd += g.awayScore - g.homeScore;
-    if (g.homeScore > g.awayScore) home.points += 3;
-    else if (g.homeScore < g.awayScore) away.points += 3;
-    else {
-      home.points += 1;
-      away.points += 1;
-    }
-  }
-  return standings.sort(
-    (a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf,
-  );
-};
-
-const buildKnockoutAfterGroups = (
-  championship: Championship,
-): ChampionshipGame[] => {
-  if (!championship.groups) return [];
-  const qualifiers: { teamId: string; teamName: string }[] = [];
-  for (const group of championship.groups) {
-    const standings = standingsForGroup(championship, group.name);
-    const top = standings.slice(0, 2);
-    qualifiers.push(
-      ...top.map((s) => ({ teamId: s.teamId, teamName: s.teamName })),
-    );
-  }
-  if (qualifiers.length < 2) return [];
-  const slots = nextPowerOf2(qualifiers.length);
-  while (qualifiers.length < slots) qualifiers.push({ teamId: '', teamName: '' });
-  const games: ChampionshipGame[] = [];
-  const phase = phaseForRound(slots, 0);
-  for (let i = 0; i < slots; i += 2) {
-    const a = qualifiers[i];
-    const b = qualifiers[slots - 1 - i];
-    games.push({
-      gameId: uuid(),
-      phase,
-      round: 0,
-      bracketIndex: i / 2,
-      homeTeamId: a.teamId || undefined,
-      homeTeamName: a.teamName || undefined,
-      awayTeamId: b.teamId || undefined,
-      awayTeamName: b.teamName || undefined,
-      status: 'AGENDADO',
-    });
-  }
-  return games;
-};
-
-const determineWinner = (
-  g: ChampionshipGame,
-): { teamId?: string; teamName?: string } | null => {
-  if (g.status !== 'REALIZADO') return null;
-  if (g.homeScore === undefined || g.awayScore === undefined) return null;
-  if (g.homeScore > g.awayScore)
-    return { teamId: g.homeTeamId, teamName: g.homeTeamName };
-  if (g.awayScore > g.homeScore)
-    return { teamId: g.awayTeamId, teamName: g.awayTeamName };
-  if (g.winnerByPenalties === 'HOME')
-    return { teamId: g.homeTeamId, teamName: g.homeTeamName };
-  if (g.winnerByPenalties === 'AWAY')
-    return { teamId: g.awayTeamId, teamName: g.awayTeamName };
-  return null;
-};
-
-const advanceKnockout = (championship: Championship): void => {
-  const knockoutPhases: ChampionshipPhase[] = ['R16', 'QF', 'SF', 'F'];
-  for (let i = 0; i < knockoutPhases.length - 1; i++) {
-    const currentPhase = knockoutPhases[i];
-    const currentGames = championship.games
-      .filter((g) => g.phase === currentPhase)
-      .sort((a, b) => (a.bracketIndex ?? 0) - (b.bracketIndex ?? 0));
-    if (currentGames.length === 0) continue;
-    const allDecided = currentGames.every((g) => determineWinner(g) !== null);
-    if (!allDecided) continue;
-
-    const nextPhase = knockoutPhases[i + 1];
-    const existingNext = championship.games.filter((g) => g.phase === nextPhase);
-    if (existingNext.length > 0) {
-      // Ensure they reflect the latest winners
-      for (let pair = 0; pair < currentGames.length / 2; pair++) {
-        const winA = determineWinner(currentGames[pair * 2]);
-        const winB = determineWinner(currentGames[pair * 2 + 1]);
-        const next = existingNext.find((g) => g.bracketIndex === pair);
-        if (!next) continue;
-        next.homeTeamId = winA?.teamId;
-        next.homeTeamName = winA?.teamName;
-        next.awayTeamId = winB?.teamId;
-        next.awayTeamName = winB?.teamName;
-      }
-      continue;
-    }
-
-    const newGames: ChampionshipGame[] = [];
-    for (let pair = 0; pair < currentGames.length / 2; pair++) {
-      const winA = determineWinner(currentGames[pair * 2]);
-      const winB = determineWinner(currentGames[pair * 2 + 1]);
-      newGames.push({
-        gameId: uuid(),
-        phase: nextPhase,
-        round: 0,
-        bracketIndex: pair,
-        homeTeamId: winA?.teamId,
-        homeTeamName: winA?.teamName,
-        awayTeamId: winB?.teamId,
-        awayTeamName: winB?.teamName,
-        status: 'AGENDADO',
-      });
-    }
-    championship.games.push(...newGames);
-  }
-};
-
-const maybeGenerateKnockoutFromGroups = (championship: Championship): void => {
-  if (championship.format !== 'COPA' || !championship.groups) return;
-  const allGroupsDone = championship.groups.every((g) =>
-    isGroupComplete(championship.games, g.name),
-  );
-  if (!allGroupsDone) return;
-  const hasKnockout = championship.games.some(
-    (g) => g.phase !== 'GROUP' && g.phase !== 'RR',
-  );
-  if (hasKnockout) return;
-  const knockoutGames = buildKnockoutAfterGroups(championship);
-  championship.games.push(...knockoutGames);
-};
-
 export const championshipService = {
   async listByOwner(ownerId: string): Promise<Championship[]> {
     const result = await docClient.send(
@@ -493,6 +343,26 @@ export const championshipService = {
     );
   },
 
+  /**
+   * Read a championship by id. Available to any logged-in user; no ownership check.
+   */
+  async getById(championshipId: string): Promise<Championship> {
+    const result = await docClient.send(
+      new GetCommand({
+        TableName: TABLES.CHAMPIONSHIPS,
+        Key: { championshipId },
+      }),
+    );
+    const c = result.Item as Championship | undefined;
+    if (!c) throw new HttpError('Campeonato não encontrado', 404);
+    return c;
+  },
+
+  /**
+   * Update match-level fields (date/time/location/placar/goals) of a
+   * championship game. Restricted to the championship creator (ownerId).
+   * Side effects propagate to every linked Game record.
+   */
   async updateGame(
     championshipId: string,
     gameId: string,
@@ -503,15 +373,31 @@ export const championshipService = {
     const game = championship.games.find((g) => g.gameId === gameId);
     if (!game) throw new HttpError('Jogo não encontrado', 404);
 
+    // Match metadata (date/time/location)
+    if (input.date !== undefined) {
+      if (input.date === null || input.date === '') delete game.date;
+      else game.date = input.date;
+    }
+    if (input.time !== undefined) {
+      if (input.time === null || input.time === '') delete game.time;
+      else game.time = input.time;
+    }
+    if (input.location !== undefined) {
+      if (input.location === null || input.location === '')
+        delete game.location;
+      else game.location = input.location;
+    }
+
+    // Score
+    const hasScoreInput =
+      input.homeScore !== undefined && input.awayScore !== undefined;
     if (input.clear === true) {
       delete game.homeScore;
       delete game.awayScore;
       delete game.winnerByPenalties;
+      delete game.goals;
       game.status = 'AGENDADO';
-    } else {
-      if (input.homeScore === undefined || input.awayScore === undefined) {
-        throw new HttpError('Informe placar de ambos os times', 400);
-      }
+    } else if (hasScoreInput) {
       if (!game.homeTeamId || !game.awayTeamId) {
         throw new HttpError(
           'Este jogo ainda não tem os dois times definidos',
@@ -539,6 +425,42 @@ export const championshipService = {
       game.status = 'REALIZADO';
     }
 
+    // Goals: only persisted when the game is REALIZADO.
+    if (input.goals !== undefined) {
+      if (game.status !== 'REALIZADO') {
+        if (input.goals.length > 0) {
+          throw new HttpError(
+            'Só é possível registrar gols em jogos realizados',
+            400,
+          );
+        }
+        delete game.goals;
+      } else {
+        const homeCount = input.goals.filter(
+          (g) => g.teamSide === 'HOME',
+        ).length;
+        const awayCount = input.goals.filter(
+          (g) => g.teamSide === 'AWAY',
+        ).length;
+        if (homeCount > (game.homeScore ?? 0)) {
+          throw new HttpError(
+            'Quantidade de autores do mandante maior que o placar',
+            400,
+          );
+        }
+        if (awayCount > (game.awayScore ?? 0)) {
+          throw new HttpError(
+            'Quantidade de autores do visitante maior que o placar',
+            400,
+          );
+        }
+        game.goals = input.goals.length > 0 ? input.goals : undefined;
+        if (input.goals.length === 0) delete game.goals;
+      }
+    } else if (game.status !== 'REALIZADO') {
+      delete game.goals;
+    }
+
     maybeGenerateKnockoutFromGroups(championship);
     advanceKnockout(championship);
 
@@ -552,6 +474,167 @@ export const championshipService = {
         ExpressionAttributeValues: { ':ownerId': ownerId },
       }),
     );
+
+    try {
+      await syncGamesFromChampionshipGame(championship, gameId);
+    } catch (err) {
+       
+      console.error('Falha ao propagar dados para jogos vinculados', {
+        championshipId,
+        gameId,
+        error: err instanceof Error ? err.message : err,
+      });
+    }
+
     return championship;
+  },
+
+  /**
+   * Link a championship game to a real Game record so the team owner can
+   * manage team-side data (confirmed players, guests, lineup, photos).
+   *
+   * Authorization: requires the requesting user to own the team being linked
+   * (NOT the championship creator). Each participant team can have at most one
+   * linked Game per championship game.
+   */
+  async linkGame(
+    championshipId: string,
+    championshipGameId: string,
+    requesterId: string,
+    input: { teamId: string },
+  ): Promise<{ teamId: string; gameId: string }> {
+    const championship = await this.getById(championshipId);
+    const cg = championship.games.find((g) => g.gameId === championshipGameId);
+    if (!cg) throw new HttpError('Jogo do campeonato não encontrado', 404);
+
+    if (!cg.homeTeamId || !cg.awayTeamId) {
+      throw new HttpError(
+        'Este jogo ainda não tem os dois times definidos',
+        400,
+      );
+    }
+
+    if (input.teamId !== cg.homeTeamId && input.teamId !== cg.awayTeamId) {
+      throw new HttpError(
+        'O time precisa ser um dos participantes deste jogo',
+        400,
+      );
+    }
+
+    // Requester must own the team.
+    await teamService.getOwnedTeam(input.teamId, requesterId);
+
+    // Normalize legacy single-link fields into links[] if needed.
+    const existingLinks = getGameLinks(cg);
+    if (!cg.links || cg.links.length === 0) {
+      cg.links = existingLinks.length > 0 ? [...existingLinks] : [];
+      delete cg.linkedGameId;
+      delete cg.linkedTeamId;
+    }
+
+    const existing = cg.links.find((l) => l.teamId === input.teamId);
+    if (existing) {
+      return existing;
+    }
+
+    const opponentName =
+      input.teamId === cg.homeTeamId ? cg.awayTeamName : cg.homeTeamName;
+    const dateIso = cg.date ?? new Date().toISOString().slice(0, 10);
+    const timeStr = cg.time ?? '00:00';
+    const locationStr = cg.location ?? 'A definir';
+
+    const linkedIsHome = cg.homeTeamId === input.teamId;
+    let result: { scoreFor: number; scoreAgainst: number } | undefined;
+    let status: 'AGENDADO' | 'REALIZADO' = 'AGENDADO';
+    if (
+      cg.status === 'REALIZADO' &&
+      cg.homeScore !== undefined &&
+      cg.awayScore !== undefined
+    ) {
+      status = 'REALIZADO';
+      result = linkedIsHome
+        ? { scoreFor: cg.homeScore, scoreAgainst: cg.awayScore }
+        : { scoreFor: cg.awayScore, scoreAgainst: cg.homeScore };
+    }
+
+    const newGame = await gameService.create(input.teamId, {
+      date: dateIso,
+      time: timeStr,
+      location: locationStr,
+      opponent: opponentName ?? 'Adversário',
+      status,
+      result,
+      championshipRef: {
+        championshipId,
+        championshipGameId,
+      },
+    });
+
+    cg.links.push({ teamId: input.teamId, gameId: newGame.gameId });
+    championship.updatedAt = new Date().toISOString();
+
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLES.CHAMPIONSHIPS,
+        Item: championship,
+      }),
+    );
+
+    // Make sure the freshly created Game also reflects current championship data.
+    try {
+      await syncGamesFromChampionshipGame(championship, championshipGameId);
+    } catch {
+      // best-effort
+    }
+
+    return { teamId: input.teamId, gameId: newGame.gameId };
+  },
+
+  /**
+   * Read team-side data (confirmed players, guests, lineup, photos) of a
+   * linked Game from the championship creator's perspective. Read-only.
+   *
+   * Authorization: only the championship creator.
+   */
+  async getTeamView(
+    championshipId: string,
+    championshipGameId: string,
+    teamId: string,
+    ownerId: string,
+  ): Promise<{
+    linkedGameId: string | null;
+    confirmedPlayerIds: string[];
+    guests: import('../models').GameGuest[];
+    lineup: import('../models').GameLineup | null;
+    players: import('../models').Player[];
+  }> {
+    const championship = await this.getOwned(championshipId, ownerId);
+    const cg = championship.games.find((g) => g.gameId === championshipGameId);
+    if (!cg) throw new HttpError('Jogo do campeonato não encontrado', 404);
+    if (teamId !== cg.homeTeamId && teamId !== cg.awayTeamId) {
+      throw new HttpError(
+        'O time precisa ser um dos participantes deste jogo',
+        400,
+      );
+    }
+    const players = await playerService.listByTeam(teamId);
+    const link = getGameLinks(cg).find((l) => l.teamId === teamId);
+    if (!link) {
+      return {
+        linkedGameId: null,
+        confirmedPlayerIds: [],
+        guests: [],
+        lineup: null,
+        players,
+      };
+    }
+    const linkedGame = await gameService.getById(teamId, link.gameId);
+    return {
+      linkedGameId: linkedGame.gameId,
+      confirmedPlayerIds: linkedGame.confirmedPlayerIds ?? [],
+      guests: linkedGame.guests ?? [],
+      lineup: linkedGame.lineup ?? null,
+      players,
+    };
   },
 };

@@ -10,6 +10,7 @@ import { HttpError } from '../utils/response';
 import { playerService } from './playerService';
 import type {
   Game,
+  GameChampionshipRef,
   GameGoal,
   GameGuest,
   GameLineup,
@@ -25,6 +26,7 @@ export interface CreateGameInput {
   opponent: string;
   status: GameStatus;
   result?: GameResult;
+  championshipRef?: GameChampionshipRef;
 }
 
 export interface GameGoalInput {
@@ -154,6 +156,12 @@ export const gameService = {
       createdAt: now,
       updatedAt: now,
     };
+    if (input.championshipRef) {
+      game.championshipRef = {
+        championshipId: input.championshipRef.championshipId,
+        championshipGameId: input.championshipRef.championshipGameId,
+      };
+    }
     await docClient.send(
       new PutCommand({
         TableName: TABLES.GAMES,
@@ -170,6 +178,30 @@ export const gameService = {
     input: UpdateGameInput,
   ): Promise<Game> {
     const existing = await this.getById(teamId, gameId);
+    // When the game belongs to a championship, the championship creator owns
+    // match-level fields (date/time/location/opponent/status/result/goals).
+    // The team owner can only edit team-side fields (confirmed/guests/lineup).
+    // Match-level fields from the input are silently ignored.
+    const isChampionshipGame = Boolean(existing.championshipRef);
+    const effectiveDate = isChampionshipGame ? existing.date : input.date;
+    const effectiveTime = isChampionshipGame ? existing.time : input.time;
+    const effectiveLocation = isChampionshipGame
+      ? existing.location
+      : input.location;
+    const effectiveOpponent = isChampionshipGame
+      ? existing.opponent
+      : input.opponent;
+    const effectiveStatus = isChampionshipGame ? existing.status : input.status;
+    const effectiveResult = isChampionshipGame
+      ? existing.result
+      : input.status === 'REALIZADO'
+        ? input.result
+        : undefined;
+    // For championship games the goals are owned by the championship creator
+    // and are synced down via championshipSync; we keep them verbatim.
+    const preservedGoals: GameGoal[] | undefined = isChampionshipGame
+      ? existing.goals
+      : undefined;
     const teamPlayers = await playerService.listByTeam(teamId);
     const teamPlayerIds = new Set(teamPlayers.map((p) => p.playerId));
     const teamPlayerNames = new Map(
@@ -196,7 +228,9 @@ export const gameService = {
     for (const guest of finalGuests ?? []) {
       scorers.set(guest.guestId, guest.name);
     }
-    const goals = enrichGoals(input.goals, scorers);
+    const goals = isChampionshipGame
+      ? preservedGoals
+      : enrichGoals(input.goals, scorers);
 
     let lineup: GameLineup | undefined;
     let clearLineup = false;
@@ -235,8 +269,9 @@ export const gameService = {
       }
     }
     const now = new Date().toISOString();
-    const result = input.status === 'REALIZADO' ? input.result : undefined;
-    const finalGoals = input.status === 'REALIZADO' ? goals : undefined;
+    const result =
+      effectiveStatus === 'REALIZADO' ? effectiveResult : undefined;
+    const finalGoals = effectiveStatus === 'REALIZADO' ? goals : undefined;
 
     const setExprs: string[] = [
       '#date = :date',
@@ -255,11 +290,11 @@ export const gameService = {
       '#updatedAt': 'updatedAt',
     };
     const values: Record<string, unknown> = {
-      ':date': input.date,
-      ':time': input.time,
-      ':location': input.location,
-      ':opponent': input.opponent,
-      ':status': input.status,
+      ':date': effectiveDate,
+      ':time': effectiveTime,
+      ':location': effectiveLocation,
+      ':opponent': effectiveOpponent,
+      ':status': effectiveStatus,
       ':updatedAt': now,
       ':teamId': teamId,
     };
