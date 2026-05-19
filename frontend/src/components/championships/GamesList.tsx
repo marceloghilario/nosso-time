@@ -70,6 +70,24 @@ const formatScheduledLabel = (
   return parts.length > 0 ? parts.join(' · ') : null;
 };
 
+const sortByDate = (a: ChampionshipGame, b: ChampionshipGame): number => {
+  // Undated games go to the end.
+  if (!a.date && !b.date) {
+    return a.round - b.round || (a.bracketIndex ?? 0) - (b.bracketIndex ?? 0);
+  }
+  if (!a.date) return 1;
+  if (!b.date) return -1;
+  if (a.date !== b.date) return a.date.localeCompare(b.date);
+  const at = a.time ?? '';
+  const bt = b.time ?? '';
+  if (at !== bt) {
+    if (!at) return 1;
+    if (!bt) return -1;
+    return at.localeCompare(bt);
+  }
+  return a.round - b.round || (a.bracketIndex ?? 0) - (b.bracketIndex ?? 0);
+};
+
 const GameRow = ({
   game,
   championshipId,
@@ -228,6 +246,9 @@ export default function GamesList({ championship, onUpdated }: Props) {
         const key = g.group;
         if (!byGroup.has(key)) byGroup.set(key, []);
         byGroup.get(key)!.push(g);
+      }
+      for (const [, list] of byGroup) {
+        list.sort(sortByDate);
       }
       return { phase, byGroup };
     });
