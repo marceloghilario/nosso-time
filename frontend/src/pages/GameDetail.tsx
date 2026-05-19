@@ -4,30 +4,42 @@ import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Camera,
+  Layers,
   Plus,
   Save,
   Trash2,
   Upload,
 } from 'lucide-react';
 import { api, ApiError } from '../services/api';
-import type { GameGuestInput } from '../services/api';
+import type { GameGuestInput, GameLineupInput } from '../services/api';
 import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/Toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import PhotoGallery from '../components/PhotoGallery';
+import LineupEditor from '../components/tactical/LineupEditor';
+import type {
+  LineupCandidate,
+  LineupValue,
+} from '../components/tactical/LineupEditor';
 import type {
   GameGoal,
   GameGuest,
   GameStatus,
   Player,
   PlayerPosition,
+  FormationScheme,
 } from '../types';
-import { PLAYER_POSITIONS } from '../types';
+import { FORMATION_SCHEMES, PLAYER_POSITIONS } from '../types';
 import {
   GAME_STATUS_LABELS,
   PLAYER_POSITION_LABELS,
   comparePlayers,
 } from '../utils/constants';
+
+const DEFAULT_LINEUP_SCHEME: FormationScheme = '4-4-2';
+
+const isFormationScheme = (s: string): s is FormationScheme =>
+  (FORMATION_SCHEMES as readonly string[]).includes(s);
 
 interface GoalDraft {
   key: string;
@@ -84,6 +96,10 @@ export default function GameDetail() {
   const [goals, setGoals] = useState<GoalDraft[]>([]);
   const [confirmedPlayerIds, setConfirmedPlayerIds] = useState<string[]>([]);
   const [guests, setGuests] = useState<GuestDraft[]>([]);
+  const [lineup, setLineup] = useState<LineupValue>({
+    scheme: DEFAULT_LINEUP_SCHEME,
+    positions: [],
+  });
   const [saving, setSaving] = useState(false);
 
   const [file, setFile] = useState<File | null>(null);
@@ -116,6 +132,18 @@ export default function GameDetail() {
     setGoals((game.goals ?? []).map(toGoalDraft));
     setConfirmedPlayerIds(game.confirmedPlayerIds ?? []);
     setGuests((game.guests ?? []).map(toGuestDraft));
+    const storedScheme = game.lineup?.scheme;
+    setLineup({
+      scheme:
+        storedScheme && isFormationScheme(storedScheme)
+          ? storedScheme
+          : DEFAULT_LINEUP_SCHEME,
+      positions: (game.lineup?.positions ?? []).map((p) => ({
+        playerId: p.playerId,
+        x: p.x,
+        y: p.y,
+      })),
+    });
   }
 
   const sortedPlayers = useMemo(
@@ -159,6 +187,41 @@ export default function GameDetail() {
   const removeGuest = (key: string) => {
     setGuests((prev) => prev.filter((g) => g.key !== key));
   };
+
+  const lineupPool = useMemo<LineupCandidate[]>(() => {
+    const items: LineupCandidate[] = [];
+    for (const p of sortedPlayers) {
+      if (!confirmedSet.has(p.playerId)) continue;
+      items.push({
+        playerId: p.playerId,
+        playerName: p.name,
+        playerNumber: p.number,
+        label: PLAYER_POSITION_LABELS[p.position],
+      });
+    }
+    for (const guest of guests) {
+      if (!guest.guestId) continue;
+      const name = guest.name.trim();
+      if (!name) continue;
+      const number = guest.number ? Number.parseInt(guest.number, 10) : NaN;
+      items.push({
+        playerId: guest.guestId,
+        playerName: name,
+        playerNumber: Number.isFinite(number) ? number : undefined,
+        label: guest.position
+          ? `${PLAYER_POSITION_LABELS[guest.position]} (convidado)`
+          : 'Convidado',
+      });
+    }
+    return items;
+  }, [sortedPlayers, confirmedSet, guests]);
+
+  const sanitizedLineup = useMemo<LineupValue>(() => {
+    const allowed = new Set(lineupPool.map((c) => c.playerId));
+    const filtered = lineup.positions.filter((p) => allowed.has(p.playerId));
+    if (filtered.length === lineup.positions.length) return lineup;
+    return { scheme: lineup.scheme, positions: filtered };
+  }, [lineup, lineupPool]);
 
   const scorerOptions = useMemo(() => {
     type Option = { id: string; label: string };
@@ -262,6 +325,15 @@ export default function GameDetail() {
         payloadGuests.push(guest);
       }
 
+      const payloadLineup: GameLineupInput = {
+        scheme: sanitizedLineup.scheme,
+        positions: sanitizedLineup.positions.map((p) => ({
+          playerId: p.playerId,
+          x: p.x,
+          y: p.y,
+        })),
+      };
+
       await api.updateGame(teamId, gameId, {
         date,
         time,
@@ -272,6 +344,7 @@ export default function GameDetail() {
         goals: payloadGoals,
         confirmedPlayerIds,
         guests: payloadGuests,
+        lineup: payloadLineup,
       });
       showSuccess('Jogo atualizado');
       gameReq.refetch();
@@ -567,6 +640,27 @@ export default function GameDetail() {
                   ))}
                 </ul>
               )}
+            </section>
+
+            <section className="space-y-2 border-t border-gray-100 pt-4">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 inline-flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5" />
+                  Escalação no campo
+                </h3>
+                <span className="text-[11px] text-gray-500">
+                  {sanitizedLineup.positions.length} no campo
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">
+                Posicione os jogadores deste jogo. Confirmados e convidados
+                aparecem na lateral.
+              </p>
+              <LineupEditor
+                pool={lineupPool}
+                value={sanitizedLineup}
+                onChange={setLineup}
+              />
             </section>
 
             <section className="space-y-2 border-t border-gray-100 pt-4">

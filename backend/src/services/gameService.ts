@@ -12,6 +12,7 @@ import type {
   Game,
   GameGoal,
   GameGuest,
+  GameLineup,
   GameResult,
   GameStatus,
   PlayerPosition,
@@ -38,6 +39,11 @@ export interface GameGuestInput {
   number?: number;
 }
 
+export interface GameLineupInput {
+  scheme: string;
+  positions: { playerId: string; x: number; y: number }[];
+}
+
 export interface UpdateGameInput {
   date: string;
   time: string;
@@ -48,6 +54,7 @@ export interface UpdateGameInput {
   goals?: GameGoalInput[];
   confirmedPlayerIds?: string[];
   guests?: GameGuestInput[];
+  lineup?: GameLineupInput;
 }
 
 const enrichGoals = (
@@ -190,6 +197,43 @@ export const gameService = {
       scorers.set(guest.guestId, guest.name);
     }
     const goals = enrichGoals(input.goals, scorers);
+
+    let lineup: GameLineup | undefined;
+    let clearLineup = false;
+    if (input.lineup !== undefined) {
+      const pool = new Set<string>([
+        ...(finalConfirmed ?? []),
+        ...((finalGuests ?? []).map((g) => g.guestId)),
+      ]);
+      const seen = new Set<string>();
+      for (const pos of input.lineup.positions) {
+        if (!pool.has(pos.playerId)) {
+          throw new HttpError(
+            'Jogador da escalação precisa estar entre confirmados ou convidados',
+            400,
+          );
+        }
+        if (seen.has(pos.playerId)) {
+          throw new HttpError(
+            'Jogador duplicado na escalação',
+            400,
+          );
+        }
+        seen.add(pos.playerId);
+      }
+      if (input.lineup.positions.length === 0) {
+        clearLineup = true;
+      } else {
+        lineup = {
+          scheme: input.lineup.scheme,
+          positions: input.lineup.positions.map((p) => ({
+            playerId: p.playerId,
+            x: p.x,
+            y: p.y,
+          })),
+        };
+      }
+    }
     const now = new Date().toISOString();
     const result = input.status === 'REALIZADO' ? input.result : undefined;
     const finalGoals = input.status === 'REALIZADO' ? goals : undefined;
@@ -255,6 +299,14 @@ export const gameService = {
         removes.push('#guests');
         names['#guests'] = 'guests';
       }
+    }
+    if (lineup) {
+      setExprs.push('#lineup = :lineup');
+      names['#lineup'] = 'lineup';
+      values[':lineup'] = lineup;
+    } else if (clearLineup) {
+      removes.push('#lineup');
+      names['#lineup'] = 'lineup';
     }
     let updateExpression = `SET ${setExprs.join(', ')}`;
     if (removes.length > 0) {
