@@ -30,9 +30,13 @@ export const handler = async (
       gameId,
       ownerId,
       {
+        date: input.date,
+        time: input.time,
+        location: input.location,
         homeScore: input.homeScore,
         awayScore: input.awayScore,
         winnerByPenalties,
+        goals: input.goals,
         clear: input.clear,
       },
     );

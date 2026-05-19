@@ -342,6 +342,14 @@ functions:
           method: post
           authorizer:
             name: cognitoAuthorizer
+  getChampionshipGameTeamView:
+    handler: src/functions/championships/getTeamView.handler
+    events:
+      - httpApi:
+          path: /championships/{championshipId}/games/{gameId}/team-view/{teamId}
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
 
 resources:
   Resources:

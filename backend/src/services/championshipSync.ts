@@ -1,18 +1,36 @@
 import {
-  GetCommand,
   PutCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { v4 as uuid } from 'uuid';
 import { docClient, TABLES } from '../utils/dynamo';
-import type { Championship, ChampionshipGame, Game, GameResult } from '../models';
+import type {
+  Championship,
+  ChampionshipGame,
+  ChampionshipGameGoal,
+  ChampionshipGameLink,
+  GameGoal,
+  GameResult,
+} from '../models';
 
 /**
- * Cross-service sync helpers between Game and ChampionshipGame records.
+ * Cross-service sync between Championship and Game.
  *
- * Each direction writes DIRECTLY to DynamoDB (not through the other service's
- * `update` method) to avoid recursive sync.
+ * Direction is one-way: Championship → Game.  The championship creator owns
+ * match-level fields (date/time/location/score/status/goals) and changes flow
+ * down to every linked Game. Team owners can only edit team-side fields
+ * (confirmed players, guests, lineup, photos) on the Game itself.
  */
+
+export const getGameLinks = (
+  cg: ChampionshipGame,
+): ChampionshipGameLink[] => {
+  if (cg.links && cg.links.length > 0) return cg.links;
+  if (cg.linkedGameId && cg.linkedTeamId) {
+    return [{ teamId: cg.linkedTeamId, gameId: cg.linkedGameId }];
+  }
+  return [];
+};
 
 const determineWinner = (
   g: ChampionshipGame,
@@ -144,7 +162,7 @@ const buildKnockoutAfterGroups = (
   return games;
 };
 
-const advanceKnockout = (championship: Championship): void => {
+export const advanceKnockout = (championship: Championship): void => {
   const knockoutPhases: ChampionshipGame['phase'][] = ['R16', 'QF', 'SF', 'F'];
   for (let i = 0; i < knockoutPhases.length - 1; i++) {
     const currentPhase = knockoutPhases[i];
@@ -191,7 +209,7 @@ const advanceKnockout = (championship: Championship): void => {
   }
 };
 
-const maybeGenerateKnockoutFromGroups = (
+export const maybeGenerateKnockoutFromGroups = (
   championship: Championship,
 ): void => {
   if (championship.format !== 'COPA' || !championship.groups) return;
@@ -207,146 +225,149 @@ const maybeGenerateKnockoutFromGroups = (
   championship.games.push(...knockoutGames);
 };
 
+const translateGoalsForTeam = (
+  cgGoals: ChampionshipGameGoal[] | undefined,
+  teamSide: 'HOME' | 'AWAY',
+): GameGoal[] | undefined => {
+  if (!cgGoals) return undefined;
+  return cgGoals
+    .filter((g) => g.teamSide === teamSide)
+    .map((g) => {
+      const out: GameGoal = { playerId: g.playerId, playerName: g.playerName };
+      if (g.minute !== undefined) out.minute = g.minute;
+      return out;
+    });
+};
+
 /**
- * Sync from Game → Championship.
- * Called by gameService.update after the game has been persisted.
+ * Sync Championship → Game for every Game linked to the given championship game.
+ * Called by championshipService.updateGame after the championship has been persisted.
+ *
+ * Writes directly to DynamoDB (does not go through gameService.update) to avoid
+ * the team-owner authorization check.
  */
-export const syncChampionshipFromGame = async (game: Game): Promise<void> => {
-  if (!game.championshipRef) return;
-  const { championshipId, championshipGameId } = game.championshipRef;
-
-  const result = await docClient.send(
-    new GetCommand({
-      TableName: TABLES.CHAMPIONSHIPS,
-      Key: { championshipId },
-    }),
-  );
-  const championship = result.Item as Championship | undefined;
-  if (!championship) return;
-
+export const syncGamesFromChampionshipGame = async (
+  championship: Championship,
+  championshipGameId: string,
+): Promise<void> => {
   const cg = championship.games.find((g) => g.gameId === championshipGameId);
   if (!cg) return;
+  const links = getGameLinks(cg);
+  if (links.length === 0) return;
 
-  // Confirm the link is still valid.
-  if (cg.linkedGameId && cg.linkedGameId !== game.gameId) return;
-  if (cg.linkedTeamId && cg.linkedTeamId !== game.teamId) return;
+  const now = new Date().toISOString();
 
-  // Determine which side is the linked team and translate scoreFor/scoreAgainst.
-  const linkedIsHome = cg.homeTeamId === game.teamId;
-  const linkedIsAway = cg.awayTeamId === game.teamId;
-  if (!linkedIsHome && !linkedIsAway) {
-    // Linked team is no longer one of the participants (e.g. knockout pairing changed).
-    return;
-  }
+  for (const link of links) {
+    const linkedIsHome = cg.homeTeamId === link.teamId;
+    const linkedIsAway = cg.awayTeamId === link.teamId;
+    if (!linkedIsHome && !linkedIsAway) continue;
 
-  if (game.status === 'AGENDADO' || !game.result) {
-    if (cg.status === 'AGENDADO' && cg.homeScore === undefined && cg.awayScore === undefined) {
-      return; // nothing changes
+    const opponentName = linkedIsHome ? cg.awayTeamName : cg.homeTeamName;
+    const teamSide: 'HOME' | 'AWAY' = linkedIsHome ? 'HOME' : 'AWAY';
+
+    let result: GameResult | undefined;
+    let status: 'AGENDADO' | 'REALIZADO' = 'AGENDADO';
+    if (
+      cg.status === 'REALIZADO' &&
+      cg.homeScore !== undefined &&
+      cg.awayScore !== undefined
+    ) {
+      status = 'REALIZADO';
+      result = linkedIsHome
+        ? { scoreFor: cg.homeScore, scoreAgainst: cg.awayScore }
+        : { scoreFor: cg.awayScore, scoreAgainst: cg.homeScore };
     }
-    delete cg.homeScore;
-    delete cg.awayScore;
-    delete cg.winnerByPenalties;
-    cg.status = 'AGENDADO';
-  } else {
-    const myScore = game.result.scoreFor;
-    const otherScore = game.result.scoreAgainst;
-    if (linkedIsHome) {
-      cg.homeScore = myScore;
-      cg.awayScore = otherScore;
+
+    const teamGoals = translateGoalsForTeam(cg.goals, teamSide);
+
+    const setExprs: string[] = ['#status = :status', '#updatedAt = :updatedAt'];
+    const names: Record<string, string> = {
+      '#status': 'status',
+      '#updatedAt': 'updatedAt',
+    };
+    const values: Record<string, unknown> = {
+      ':status': status,
+      ':updatedAt': now,
+      ':teamId': link.teamId,
+    };
+    const removes: string[] = [];
+
+    if (cg.date) {
+      setExprs.push('#date = :date');
+      names['#date'] = 'date';
+      values[':date'] = cg.date;
+    }
+    if (cg.time) {
+      setExprs.push('#time = :time');
+      names['#time'] = 'time';
+      values[':time'] = cg.time;
+    }
+    if (cg.location) {
+      setExprs.push('#location = :location');
+      names['#location'] = 'location';
+      values[':location'] = cg.location;
+    }
+    if (opponentName) {
+      setExprs.push('#opponent = :opponent');
+      names['#opponent'] = 'opponent';
+      values[':opponent'] = opponentName;
+    }
+
+    if (result) {
+      setExprs.push('#result = :result');
+      names['#result'] = 'result';
+      values[':result'] = result;
     } else {
-      cg.homeScore = otherScore;
-      cg.awayScore = myScore;
+      removes.push('#result');
+      names['#result'] = 'result';
     }
-    cg.status = 'REALIZADO';
-    // Note: knockout ties without winnerByPenalties just won't advance the
-    // bracket — user must set winnerByPenalties via the championship endpoint.
+    if (teamGoals && teamGoals.length > 0 && status === 'REALIZADO') {
+      setExprs.push('#goals = :goals');
+      names['#goals'] = 'goals';
+      values[':goals'] = teamGoals;
+    } else {
+      removes.push('#goals');
+      names['#goals'] = 'goals';
+    }
+
+    let updateExpression = `SET ${setExprs.join(', ')}`;
+    if (removes.length > 0) {
+      updateExpression += ` REMOVE ${removes.join(', ')}`;
+    }
+    try {
+      await docClient.send(
+        new UpdateCommand({
+          TableName: TABLES.GAMES,
+          Key: { gameId: link.gameId },
+          UpdateExpression: updateExpression,
+          ExpressionAttributeNames: names,
+          ExpressionAttributeValues: values,
+          ConditionExpression: 'attribute_exists(gameId) AND teamId = :teamId',
+        }),
+      );
+    } catch (err) {
+       
+      console.error('Falha ao sincronizar jogo a partir do campeonato', {
+        championshipId: championship.championshipId,
+        championshipGameId,
+        linkedGameId: link.gameId,
+        error: err instanceof Error ? err.message : err,
+      });
+    }
   }
+};
 
-  maybeGenerateKnockoutFromGroups(championship);
-  advanceKnockout(championship);
-
-  championship.updatedAt = new Date().toISOString();
-
+/**
+ * Persist updates to a championship without recomputing knockout/advance.
+ * Helper used by services that own the championship document.
+ */
+export const persistChampionship = async (
+  championship: Championship,
+): Promise<void> => {
   await docClient.send(
     new PutCommand({
       TableName: TABLES.CHAMPIONSHIPS,
       Item: championship,
     }),
   );
-};
-
-/**
- * Sync from Championship → Game.
- * Called by championshipService.updateGame after the championship game has been persisted.
- */
-export const syncGameFromChampionshipGame = async (
-  championship: Championship,
-  championshipGameId: string,
-): Promise<void> => {
-  const cg = championship.games.find((g) => g.gameId === championshipGameId);
-  if (!cg || !cg.linkedGameId || !cg.linkedTeamId) return;
-
-  const linkedIsHome = cg.homeTeamId === cg.linkedTeamId;
-  const linkedIsAway = cg.awayTeamId === cg.linkedTeamId;
-  if (!linkedIsHome && !linkedIsAway) return;
-
-  let result: GameResult | undefined;
-  let status: 'AGENDADO' | 'REALIZADO' = 'AGENDADO';
-  if (
-    cg.status === 'REALIZADO' &&
-    cg.homeScore !== undefined &&
-    cg.awayScore !== undefined
-  ) {
-    status = 'REALIZADO';
-    result = linkedIsHome
-      ? { scoreFor: cg.homeScore, scoreAgainst: cg.awayScore }
-      : { scoreFor: cg.awayScore, scoreAgainst: cg.homeScore };
-  }
-
-  const now = new Date().toISOString();
-  const setExprs: string[] = ['#status = :status', '#updatedAt = :updatedAt'];
-  const names: Record<string, string> = {
-    '#status': 'status',
-    '#updatedAt': 'updatedAt',
-  };
-  const values: Record<string, unknown> = {
-    ':status': status,
-    ':updatedAt': now,
-    ':teamId': cg.linkedTeamId,
-  };
-  const removes: string[] = [];
-  if (result) {
-    setExprs.push('#result = :result');
-    names['#result'] = 'result';
-    values[':result'] = result;
-  } else {
-    removes.push('#result');
-    names['#result'] = 'result';
-    removes.push('#goals');
-    names['#goals'] = 'goals';
-  }
-  let updateExpression = `SET ${setExprs.join(', ')}`;
-  if (removes.length > 0) {
-    updateExpression += ` REMOVE ${removes.join(', ')}`;
-  }
-  try {
-    await docClient.send(
-      new UpdateCommand({
-        TableName: TABLES.GAMES,
-        Key: { gameId: cg.linkedGameId },
-        UpdateExpression: updateExpression,
-        ExpressionAttributeNames: names,
-        ExpressionAttributeValues: values,
-        ConditionExpression: 'attribute_exists(gameId) AND teamId = :teamId',
-      }),
-    );
-  } catch (err) {
-    // Linked game may have been deleted or no longer matches. Don't block.
-     
-    console.error('Falha ao sincronizar jogo a partir do campeonato', {
-      championshipId: championship.championshipId,
-      championshipGameId,
-      error: err instanceof Error ? err.message : err,
-    });
-  }
 };

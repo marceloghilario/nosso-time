@@ -219,20 +219,47 @@ export const UpdateChampionshipSchema = z
     message: 'Nenhum campo para atualizar',
   });
 
+export const ChampionshipGameGoalSchema = z.object({
+  teamSide: z.enum(['HOME', 'AWAY']),
+  playerId: z.string().min(1),
+  playerName: z.string().min(1).max(120),
+  minute: z.number().int().min(0).max(200).optional(),
+});
+
 export const UpdateChampionshipGameSchema = z
   .object({
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Data deve estar no formato AAAA-MM-DD')
+      .optional()
+      .nullable(),
+    time: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/, 'Hora deve estar no formato HH:MM')
+      .optional()
+      .nullable(),
+    location: z.string().min(1).max(200).optional().nullable(),
     homeScore: z.number().int().min(0).max(99).optional(),
     awayScore: z.number().int().min(0).max(99).optional(),
     winnerByPenalties: z.enum(['HOME', 'AWAY']).nullable().optional(),
+    goals: z.array(ChampionshipGameGoalSchema).max(60).optional(),
     clear: z.boolean().optional(),
   })
   .refine(
-    (val) =>
-      val.clear === true ||
-      (val.homeScore !== undefined && val.awayScore !== undefined),
+    (val) => {
+      // Allow updating only match metadata (date/time/location) without score.
+      const hasScore =
+        val.homeScore !== undefined && val.awayScore !== undefined;
+      const hasMeta =
+        val.date !== undefined ||
+        val.time !== undefined ||
+        val.location !== undefined ||
+        val.goals !== undefined;
+      return val.clear === true || hasScore || hasMeta;
+    },
     {
       message:
-        'Informe placar de ambos os times (ou use clear=true para limpar)',
+        'Informe placar, dados do jogo (data/hora/local/gols) ou use clear=true',
     },
   );
 
