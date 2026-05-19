@@ -8,6 +8,8 @@ import {
 import { v4 as uuid } from 'uuid';
 import { docClient, TABLES } from '../utils/dynamo';
 import { HttpError } from '../utils/response';
+import { gameService } from './gameService';
+import { syncGameFromChampionshipGame } from './championshipSync';
 import type {
   Championship,
   ChampionshipFormat,
@@ -552,6 +554,116 @@ export const championshipService = {
         ExpressionAttributeValues: { ':ownerId': ownerId },
       }),
     );
+
+    // Propagate the score/status back to the linked Game if any.
+    try {
+      await syncGameFromChampionshipGame(championship, gameId);
+    } catch (err) {
+       
+      console.error('Falha ao propagar placar para jogo vinculado', {
+        championshipId,
+        gameId,
+        error: err instanceof Error ? err.message : err,
+      });
+    }
+
     return championship;
+  },
+
+  /**
+   * Link a championship game to a real Game record so the user can edit
+   * date/time/location/photos/confirmed players/lineup with the regular
+   * game-detail UI. Idempotent: if already linked, returns the existing link.
+   */
+  async linkGame(
+    championshipId: string,
+    championshipGameId: string,
+    ownerId: string,
+    input: { teamId: string },
+  ): Promise<{ teamId: string; gameId: string }> {
+    const championship = await this.getOwned(championshipId, ownerId);
+    const cg = championship.games.find((g) => g.gameId === championshipGameId);
+    if (!cg) throw new HttpError('Jogo do campeonato não encontrado', 404);
+
+    if (!cg.homeTeamId || !cg.awayTeamId) {
+      throw new HttpError(
+        'Este jogo ainda não tem os dois times definidos',
+        400,
+      );
+    }
+
+    if (input.teamId !== cg.homeTeamId && input.teamId !== cg.awayTeamId) {
+      throw new HttpError(
+        'O time precisa ser um dos participantes deste jogo',
+        400,
+      );
+    }
+
+    const participant = championship.participants.find(
+      (p) => p.teamId === input.teamId,
+    );
+    if (!participant || !participant.isMine) {
+      throw new HttpError(
+        'Só é possível abrir detalhes de jogos com um time que pertence a você',
+        400,
+      );
+    }
+
+    if (cg.linkedGameId && cg.linkedTeamId === input.teamId) {
+      return { teamId: cg.linkedTeamId, gameId: cg.linkedGameId };
+    }
+    if (cg.linkedGameId && cg.linkedTeamId && cg.linkedTeamId !== input.teamId) {
+      throw new HttpError(
+        'Este jogo já está aberto por outro time. Remova o vínculo antes de trocar.',
+        409,
+      );
+    }
+
+    const opponentName =
+      input.teamId === cg.homeTeamId ? cg.awayTeamName : cg.homeTeamName;
+    const todayIso = new Date().toISOString().slice(0, 10);
+
+    // Translate scores when pre-populating result, if already set.
+    let result: { scoreFor: number; scoreAgainst: number } | undefined;
+    let status: 'AGENDADO' | 'REALIZADO' = 'AGENDADO';
+    if (
+      cg.status === 'REALIZADO' &&
+      cg.homeScore !== undefined &&
+      cg.awayScore !== undefined
+    ) {
+      status = 'REALIZADO';
+      const linkedIsHome = cg.homeTeamId === input.teamId;
+      result = linkedIsHome
+        ? { scoreFor: cg.homeScore, scoreAgainst: cg.awayScore }
+        : { scoreFor: cg.awayScore, scoreAgainst: cg.homeScore };
+    }
+
+    const newGame = await gameService.create(input.teamId, {
+      date: todayIso,
+      time: '00:00',
+      location: 'A definir',
+      opponent: opponentName ?? 'Adversário',
+      status,
+      result,
+      championshipRef: {
+        championshipId,
+        championshipGameId,
+      },
+    });
+
+    cg.linkedGameId = newGame.gameId;
+    cg.linkedTeamId = input.teamId;
+    championship.updatedAt = new Date().toISOString();
+
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLES.CHAMPIONSHIPS,
+        Item: championship,
+        ConditionExpression: 'ownerId = :ownerId',
+        ExpressionAttributeValues: { ':ownerId': ownerId },
+      }),
+    );
+
+    return { teamId: input.teamId, gameId: newGame.gameId };
   },
 };

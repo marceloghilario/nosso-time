@@ -369,6 +369,15 @@ export const api = {
       `/championships/${championshipId}/games/${gameId}`,
       { method: 'PUT', body: input },
     ),
+  linkChampionshipGame: (
+    championshipId: string,
+    gameId: string,
+    input: { teamId: string },
+  ) =>
+    request<{ teamId: string; gameId: string }>(
+      `/championships/${championshipId}/games/${gameId}/link`,
+      { method: 'POST', body: input },
+    ),
 };
 
 export interface ChampionshipParticipantInput {

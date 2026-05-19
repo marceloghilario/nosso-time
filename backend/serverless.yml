@@ -334,6 +334,14 @@ functions:
           method: put
           authorizer:
             name: cognitoAuthorizer
+  linkChampionshipGame:
+    handler: src/functions/championships/linkGame.handler
+    events:
+      - httpApi:
+          path: /championships/{championshipId}/games/{gameId}/link
+          method: post
+          authorizer:
+            name: cognitoAuthorizer
 
 resources:
   Resources:

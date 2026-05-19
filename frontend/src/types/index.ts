@@ -72,6 +72,11 @@ export interface GameLineup {
   positions: GameLineupPosition[];
 }
 
+export interface GameChampionshipRef {
+  championshipId: string;
+  championshipGameId: string;
+}
+
 export interface Game {
   gameId: string;
   teamId: string;
@@ -85,6 +90,7 @@ export interface Game {
   confirmedPlayerIds?: string[];
   guests?: GameGuest[];
   lineup?: GameLineup;
+  championshipRef?: GameChampionshipRef;
   createdAt: string;
   updatedAt: string;
 }
@@ -253,6 +259,8 @@ export interface ChampionshipGame {
   awayScore?: number;
   winnerByPenalties?: 'HOME' | 'AWAY';
   status: 'AGENDADO' | 'REALIZADO';
+  linkedGameId?: string;
+  linkedTeamId?: string;
 }
 
 export interface ChampionshipGroup {

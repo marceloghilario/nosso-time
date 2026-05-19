@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Loader2, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ExternalLink, Loader2, X } from 'lucide-react';
 import { api, ApiError } from '../../services/api';
 import type {
   Championship,
   ChampionshipGame,
   ChampionshipPhase,
+  ChampionshipParticipant,
 } from '../../types';
 
 interface Props {
@@ -35,15 +37,62 @@ const PHASE_LABEL: Record<ChampionshipPhase, string> = {
 const isKnockout = (phase: ChampionshipPhase): boolean =>
   phase !== 'RR' && phase !== 'GROUP';
 
+const myParticipantsInGame = (
+  game: ChampionshipGame,
+  participants: ChampionshipParticipant[],
+): ChampionshipParticipant[] => {
+  const mine: ChampionshipParticipant[] = [];
+  for (const p of participants) {
+    if (!p.isMine) continue;
+    if (p.teamId === game.homeTeamId || p.teamId === game.awayTeamId) {
+      mine.push(p);
+    }
+  }
+  return mine;
+};
+
 const GameRow = ({
   game,
   championshipId,
+  participants,
   onUpdated,
 }: {
   game: ChampionshipGame;
   championshipId: string;
+  participants: ChampionshipParticipant[];
   onUpdated: (c: Championship) => void;
 }) => {
+  const navigate = useNavigate();
+  const [linking, setLinking] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const myTeams = useMemo(
+    () => myParticipantsInGame(game, participants),
+    [game, participants],
+  );
+
+  const openAsGame = async (teamId: string) => {
+    if (game.linkedGameId && game.linkedTeamId) {
+      navigate(`/teams/${game.linkedTeamId}/jogos/${game.linkedGameId}`);
+      return;
+    }
+    setLinking(teamId);
+    setLinkError(null);
+    try {
+      const link = await api.linkChampionshipGame(
+        championshipId,
+        game.gameId,
+        { teamId },
+      );
+      navigate(`/teams/${link.teamId}/jogos/${link.gameId}`);
+    } catch (err) {
+      setLinkError(
+        err instanceof ApiError ? err.message : 'Erro ao abrir jogo',
+      );
+    } finally {
+      setLinking(null);
+    }
+  };
+
   const [home, setHome] = useState<string>(
     game.homeScore !== undefined ? String(game.homeScore) : '',
   );
@@ -163,7 +212,54 @@ const GameRow = ({
       {error && (
         <p className="mt-2 text-xs text-rose-600">{error}</p>
       )}
-      <div className="mt-2 flex items-center justify-end gap-2">
+      {linkError && (
+        <p className="mt-2 text-xs text-rose-600">{linkError}</p>
+      )}
+      <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+        {myTeams.length > 0 && (
+          game.linkedGameId && game.linkedTeamId ? (
+            <Link
+              to={`/teams/${game.linkedTeamId}/jogos/${game.linkedGameId}`}
+              className="inline-flex items-center gap-1 rounded-lg border border-primary-200 bg-primary-50 px-2 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
+            >
+              <ExternalLink className="w-3 h-3" />
+              Detalhes do jogo
+            </Link>
+          ) : myTeams.length === 1 ? (
+            <button
+              type="button"
+              onClick={() => openAsGame(myTeams[0].teamId)}
+              disabled={linking !== null || !teamsDefined}
+              className="inline-flex items-center gap-1 rounded-lg border border-primary-200 bg-primary-50 px-2 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100 disabled:opacity-50"
+            >
+              {linking === myTeams[0].teamId && (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              )}
+              {!linking && <ExternalLink className="w-3 h-3" />}
+              Abrir como jogo
+            </button>
+          ) : (
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="text-[11px] text-gray-500">Abrir como jogo de:</span>
+              {myTeams.map((p) => (
+                <button
+                  key={p.teamId}
+                  type="button"
+                  onClick={() => openAsGame(p.teamId)}
+                  disabled={linking !== null || !teamsDefined}
+                  className="inline-flex items-center gap-1 rounded-lg border border-primary-200 bg-primary-50 px-2 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100 disabled:opacity-50"
+                >
+                  {linking === p.teamId ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <ExternalLink className="w-3 h-3" />
+                  )}
+                  {p.teamName}
+                </button>
+              ))}
+            </div>
+          )
+        )}
         {game.status === 'REALIZADO' && (
           <button
             type="button"
@@ -268,6 +364,7 @@ export default function GamesList({ championship, onUpdated }: Props) {
                     key={g.gameId}
                     game={g}
                     championshipId={championship.championshipId}
+                    participants={championship.participants}
                     onUpdated={onUpdated}
                   />
                 ))}

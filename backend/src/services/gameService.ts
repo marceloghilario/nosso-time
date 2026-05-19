@@ -8,8 +8,10 @@ import { v4 as uuid } from 'uuid';
 import { docClient, TABLES } from '../utils/dynamo';
 import { HttpError } from '../utils/response';
 import { playerService } from './playerService';
+import { syncChampionshipFromGame } from './championshipSync';
 import type {
   Game,
+  GameChampionshipRef,
   GameGoal,
   GameGuest,
   GameLineup,
@@ -25,6 +27,7 @@ export interface CreateGameInput {
   opponent: string;
   status: GameStatus;
   result?: GameResult;
+  championshipRef?: GameChampionshipRef;
 }
 
 export interface GameGoalInput {
@@ -154,6 +157,12 @@ export const gameService = {
       createdAt: now,
       updatedAt: now,
     };
+    if (input.championshipRef) {
+      game.championshipRef = {
+        championshipId: input.championshipRef.championshipId,
+        championshipGameId: input.championshipRef.championshipGameId,
+      };
+    }
     await docClient.send(
       new PutCommand({
         TableName: TABLES.GAMES,
@@ -324,6 +333,19 @@ export const gameService = {
         ReturnValues: 'ALL_NEW',
       }),
     );
-    return update.Attributes as Game;
+    const updatedGame = update.Attributes as Game;
+    if (updatedGame.championshipRef) {
+      try {
+        await syncChampionshipFromGame(updatedGame);
+      } catch (err) {
+        // Sync failure should not block the game update; log and continue.
+         
+        console.error(
+          'Falha ao sincronizar campeonato a partir do jogo',
+          { gameId, error: err instanceof Error ? err.message : err },
+        );
+      }
+    }
+    return updatedGame;
   },
 };
