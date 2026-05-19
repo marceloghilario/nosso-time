@@ -19,6 +19,7 @@ import PublicFormationPage from './pages/PublicFormation';
 import ChampionshipsPage from './pages/Championships';
 import CreateChampionship from './pages/CreateChampionship';
 import ChampionshipDetail from './pages/ChampionshipDetail';
+import ChampionshipGameEditor from './pages/ChampionshipGameEditor';
 
 function HomeRedirect() {
   const { isAuthenticated } = useAuth();
@@ -58,6 +59,10 @@ export default function App() {
               <Route
                 path="/campeonatos/:championshipId"
                 element={<ChampionshipDetail />}
+              />
+              <Route
+                path="/campeonatos/:championshipId/jogos/:championshipGameId"
+                element={<ChampionshipGameEditor />}
               />
             </Route>
 

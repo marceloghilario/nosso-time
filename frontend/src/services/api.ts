@@ -3,6 +3,8 @@ import type {
   AuthSession,
   Championship,
   ChampionshipFormat,
+  ChampionshipGameGoal,
+  ChampionshipGameTeamView,
   Formation,
   FormationScheme,
   Game,
@@ -378,6 +380,14 @@ export const api = {
       `/championships/${championshipId}/games/${gameId}/link`,
       { method: 'POST', body: input },
     ),
+  getChampionshipGameTeamView: (
+    championshipId: string,
+    gameId: string,
+    teamId: string,
+  ) =>
+    request<ChampionshipGameTeamView>(
+      `/championships/${championshipId}/games/${gameId}/team-view/${teamId}`,
+    ),
 };
 
 export interface ChampionshipParticipantInput {
@@ -400,8 +410,12 @@ export interface UpdateChampionshipInput {
 }
 
 export interface UpdateChampionshipGameInput {
+  date?: string | null;
+  time?: string | null;
+  location?: string | null;
   homeScore?: number;
   awayScore?: number;
   winnerByPenalties?: 'HOME' | 'AWAY' | null;
+  goals?: ChampionshipGameGoal[];
   clear?: boolean;
 }

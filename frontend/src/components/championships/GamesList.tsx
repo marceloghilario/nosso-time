@@ -1,17 +1,18 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ExternalLink, Loader2, X } from 'lucide-react';
+import { ExternalLink, Loader2, Pencil } from 'lucide-react';
 import { api, ApiError } from '../../services/api';
 import type {
   Championship,
   ChampionshipGame,
+  ChampionshipGameLink,
   ChampionshipPhase,
   ChampionshipParticipant,
 } from '../../types';
 
 interface Props {
   championship: Championship;
-  onUpdated: (championship: Championship) => void;
+  onUpdated: () => void;
 }
 
 const PHASE_ORDER: ChampionshipPhase[] = [
@@ -34,9 +35,6 @@ const PHASE_LABEL: Record<ChampionshipPhase, string> = {
   '3RD': 'Disputa de 3º lugar',
 };
 
-const isKnockout = (phase: ChampionshipPhase): boolean =>
-  phase !== 'RR' && phase !== 'GROUP';
-
 const myParticipantsInGame = (
   game: ChampionshipGame,
   participants: ChampionshipParticipant[],
@@ -51,16 +49,39 @@ const myParticipantsInGame = (
   return mine;
 };
 
+const getGameLinks = (game: ChampionshipGame): ChampionshipGameLink[] => {
+  if (game.links && game.links.length > 0) return game.links;
+  if (game.linkedGameId && game.linkedTeamId) {
+    return [{ teamId: game.linkedTeamId, gameId: game.linkedGameId }];
+  }
+  return [];
+};
+
+const formatScheduledLabel = (
+  game: ChampionshipGame,
+): string | null => {
+  const parts: string[] = [];
+  if (game.date) {
+    const [y, m, d] = game.date.split('-');
+    parts.push(`${d}/${m}/${y}`);
+  }
+  if (game.time) parts.push(game.time);
+  if (game.location) parts.push(game.location);
+  return parts.length > 0 ? parts.join(' · ') : null;
+};
+
 const GameRow = ({
   game,
   championshipId,
   participants,
+  viewerIsCreator,
   onUpdated,
 }: {
   game: ChampionshipGame;
   championshipId: string;
   participants: ChampionshipParticipant[];
-  onUpdated: (c: Championship) => void;
+  viewerIsCreator: boolean;
+  onUpdated: () => void;
 }) => {
   const navigate = useNavigate();
   const [linking, setLinking] = useState<string | null>(null);
@@ -69,10 +90,12 @@ const GameRow = ({
     () => myParticipantsInGame(game, participants),
     [game, participants],
   );
+  const links = useMemo(() => getGameLinks(game), [game]);
 
   const openAsGame = async (teamId: string) => {
-    if (game.linkedGameId && game.linkedTeamId) {
-      navigate(`/teams/${game.linkedTeamId}/jogos/${game.linkedGameId}`);
+    const existing = links.find((l) => l.teamId === teamId);
+    if (existing) {
+      navigate(`/teams/${existing.teamId}/jogos/${existing.gameId}`);
       return;
     }
     setLinking(teamId);
@@ -83,6 +106,7 @@ const GameRow = ({
         game.gameId,
         { teamId },
       );
+      onUpdated();
       navigate(`/teams/${link.teamId}/jogos/${link.gameId}`);
     } catch (err) {
       setLinkError(
@@ -93,76 +117,10 @@ const GameRow = ({
     }
   };
 
-  const [home, setHome] = useState<string>(
-    game.homeScore !== undefined ? String(game.homeScore) : '',
-  );
-  const [away, setAway] = useState<string>(
-    game.awayScore !== undefined ? String(game.awayScore) : '',
-  );
-  const [penalties, setPenalties] = useState<'HOME' | 'AWAY' | ''>(
-    game.winnerByPenalties ?? '',
-  );
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const homeReady = home !== '' && !Number.isNaN(Number(home));
-  const awayReady = away !== '' && !Number.isNaN(Number(away));
-  const isDraw =
-    homeReady && awayReady && Number(home) === Number(away);
-  const needsPenalties = isKnockout(game.phase) && isDraw;
   const teamsDefined = Boolean(game.homeTeamId && game.awayTeamId);
-
-  const save = async () => {
-    if (!teamsDefined) return;
-    if (!homeReady || !awayReady) {
-      setError('Preencha placar dos dois times.');
-      return;
-    }
-    if (needsPenalties && !penalties) {
-      setError('Em mata-mata, defina o vencedor por pênaltis.');
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      const updated = await api.updateChampionshipGame(
-        championshipId,
-        game.gameId,
-        {
-          homeScore: Number(home),
-          awayScore: Number(away),
-          winnerByPenalties: needsPenalties
-            ? (penalties as 'HOME' | 'AWAY')
-            : null,
-        },
-      );
-      onUpdated(updated);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erro ao salvar.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const clear = async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      const updated = await api.updateChampionshipGame(
-        championshipId,
-        game.gameId,
-        { clear: true },
-      );
-      setHome('');
-      setAway('');
-      setPenalties('');
-      onUpdated(updated);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erro ao limpar.');
-    } finally {
-      setSaving(false);
-    }
-  };
+  const hasScore =
+    game.homeScore !== undefined && game.awayScore !== undefined;
+  const scheduled = formatScheduledLabel(game);
 
   return (
     <li className="bg-white rounded-xl shadow-sm border border-gray-100 p-3">
@@ -170,77 +128,67 @@ const GameRow = ({
         <div className="flex-1 min-w-[10rem] text-right text-sm font-medium text-gray-900 truncate">
           {game.homeTeamName ?? <span className="text-gray-400">A definir</span>}
         </div>
-        <input
-          type="number"
-          min={0}
-          max={99}
-          disabled={!teamsDefined || saving}
-          value={home}
-          onChange={(e) => setHome(e.target.value)}
-          className="w-14 rounded-lg border border-gray-200 bg-white px-1 py-1.5 text-center text-base font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50"
-        />
-        <span className="text-gray-400">x</span>
-        <input
-          type="number"
-          min={0}
-          max={99}
-          disabled={!teamsDefined || saving}
-          value={away}
-          onChange={(e) => setAway(e.target.value)}
-          className="w-14 rounded-lg border border-gray-200 bg-white px-1 py-1.5 text-center text-base font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50"
-        />
+        <div className="flex items-center gap-1 text-base font-bold text-gray-900 tabular-nums">
+          <span className="inline-block w-10 text-center">
+            {hasScore ? game.homeScore : '—'}
+          </span>
+          <span className="text-gray-400">x</span>
+          <span className="inline-block w-10 text-center">
+            {hasScore ? game.awayScore : '—'}
+          </span>
+        </div>
         <div className="flex-1 min-w-[10rem] text-left text-sm font-medium text-gray-900 truncate">
           {game.awayTeamName ?? <span className="text-gray-400">A definir</span>}
         </div>
       </div>
-      {needsPenalties && (
-        <div className="mt-2 flex items-center gap-2 text-xs text-gray-600">
-          <span>Vencedor nos pênaltis:</span>
-          <select
-            value={penalties}
-            onChange={(e) =>
-              setPenalties((e.target.value as 'HOME' | 'AWAY') || '')
-            }
-            className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            <option value="">Selecione…</option>
-            <option value="HOME">{game.homeTeamName}</option>
-            <option value="AWAY">{game.awayTeamName}</option>
-          </select>
-        </div>
-      )}
-      {error && (
-        <p className="mt-2 text-xs text-rose-600">{error}</p>
-      )}
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+        {scheduled && <span className="text-gray-500">{scheduled}</span>}
+        {game.winnerByPenalties && (
+          <span className="rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-amber-700">
+            Pênaltis:{' '}
+            {game.winnerByPenalties === 'HOME'
+              ? game.homeTeamName
+              : game.awayTeamName}
+          </span>
+        )}
+        {game.status === 'REALIZADO' && (
+          <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-emerald-700">
+            Realizado
+          </span>
+        )}
+      </div>
       {linkError && (
         <p className="mt-2 text-xs text-rose-600">{linkError}</p>
       )}
       <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+        {viewerIsCreator && (
+          <Link
+            to={`/campeonatos/${championshipId}/jogos/${game.gameId}`}
+            className="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-primary-700"
+            aria-disabled={!teamsDefined}
+          >
+            <Pencil className="w-3 h-3" />
+            Editar partida
+          </Link>
+        )}
         {myTeams.length > 0 && (
-          game.linkedGameId && game.linkedTeamId ? (
-            <Link
-              to={`/teams/${game.linkedTeamId}/jogos/${game.linkedGameId}`}
-              className="inline-flex items-center gap-1 rounded-lg border border-primary-200 bg-primary-50 px-2 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
-            >
-              <ExternalLink className="w-3 h-3" />
-              Detalhes do jogo
-            </Link>
-          ) : myTeams.length === 1 ? (
+          myTeams.length === 1 ? (
             <button
               type="button"
               onClick={() => openAsGame(myTeams[0].teamId)}
               disabled={linking !== null || !teamsDefined}
               className="inline-flex items-center gap-1 rounded-lg border border-primary-200 bg-primary-50 px-2 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100 disabled:opacity-50"
             >
-              {linking === myTeams[0].teamId && (
+              {linking === myTeams[0].teamId ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <ExternalLink className="w-3 h-3" />
               )}
-              {!linking && <ExternalLink className="w-3 h-3" />}
-              Abrir como jogo
+              Abrir como meu time
             </button>
           ) : (
             <div className="flex flex-wrap items-center gap-1">
-              <span className="text-[11px] text-gray-500">Abrir como jogo de:</span>
+              <span className="text-[11px] text-gray-500">Abrir como:</span>
               {myTeams.map((p) => (
                 <button
                   key={p.teamId}
@@ -260,25 +208,6 @@ const GameRow = ({
             </div>
           )
         )}
-        {game.status === 'REALIZADO' && (
-          <button
-            type="button"
-            onClick={clear}
-            disabled={saving}
-            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            <X className="w-3 h-3" /> Limpar
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={save}
-          disabled={saving || !teamsDefined}
-          className="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-        >
-          {saving && <Loader2 className="w-3 h-3 animate-spin" />}
-          Salvar placar
-        </button>
       </div>
     </li>
   );
@@ -365,6 +294,7 @@ export default function GamesList({ championship, onUpdated }: Props) {
                     game={g}
                     championshipId={championship.championshipId}
                     participants={championship.participants}
+                    viewerIsCreator={championship.viewerIsCreator === true}
                     onUpdated={onUpdated}
                   />
                 ))}

@@ -9,6 +9,7 @@ import { v4 as uuid } from 'uuid';
 import { docClient, TABLES } from '../utils/dynamo';
 import { HttpError } from '../utils/response';
 import { gameService } from './gameService';
+import { playerService } from './playerService';
 import { teamService } from './teamService';
 import {
   advanceKnockout,
@@ -605,6 +606,7 @@ export const championshipService = {
     confirmedPlayerIds: string[];
     guests: import('../models').GameGuest[];
     lineup: import('../models').GameLineup | null;
+    players: import('../models').Player[];
   }> {
     const championship = await this.getOwned(championshipId, ownerId);
     const cg = championship.games.find((g) => g.gameId === championshipGameId);
@@ -615,6 +617,7 @@ export const championshipService = {
         400,
       );
     }
+    const players = await playerService.listByTeam(teamId);
     const link = getGameLinks(cg).find((l) => l.teamId === teamId);
     if (!link) {
       return {
@@ -622,6 +625,7 @@ export const championshipService = {
         confirmedPlayerIds: [],
         guests: [],
         lineup: null,
+        players,
       };
     }
     const linkedGame = await gameService.getById(teamId, link.gameId);
@@ -630,6 +634,7 @@ export const championshipService = {
       confirmedPlayerIds: linkedGame.confirmedPlayerIds ?? [],
       guests: linkedGame.guests ?? [],
       lineup: linkedGame.lineup ?? null,
+      players,
     };
   },
 };

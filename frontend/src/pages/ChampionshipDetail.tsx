@@ -80,10 +80,8 @@ export default function ChampionshipDetail() {
     }
   };
 
-  const handleGameUpdated = (updated: Championship) => {
+  const handleGameUpdated = () => {
     query.refetch();
-    // Replace the cached query data via refetch (avoids stale view)
-    void updated;
   };
 
   if (query.loading) {
@@ -137,16 +135,24 @@ export default function ChampionshipDetail() {
               {FORMAT_LABEL[championship.format]} ·{' '}
               {championship.participants.length} times
             </p>
+            {!championship.viewerIsCreator && (
+              <p className="mt-1 text-xs text-gray-500">
+                Visualização do campeonato (somente o criador edita os dados das
+                partidas).
+              </p>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={deleting}
-            className="inline-flex items-center gap-1 rounded-lg border border-rose-200 text-rose-600 px-2.5 py-1.5 text-xs font-medium hover:bg-rose-50 disabled:opacity-50"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            Excluir
-          </button>
+          {championship.viewerIsCreator && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="inline-flex items-center gap-1 rounded-lg border border-rose-200 text-rose-600 px-2.5 py-1.5 text-xs font-medium hover:bg-rose-50 disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Excluir
+            </button>
+          )}
         </div>
         {actionError && (
           <p className="mt-3 text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
