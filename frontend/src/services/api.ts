@@ -181,6 +181,11 @@ export interface GameGuestInput {
   number?: number;
 }
 
+export interface GameLineupInput {
+  scheme: string;
+  positions: { playerId: string; x: number; y: number }[];
+}
+
 export interface UpdateGameInput {
   date: string;
   time: string;
@@ -191,6 +196,7 @@ export interface UpdateGameInput {
   goals?: GameGoalInput[];
   confirmedPlayerIds?: string[];
   guests?: GameGuestInput[];
+  lineup?: GameLineupInput;
 }
 
 export interface UploadUrlInput {

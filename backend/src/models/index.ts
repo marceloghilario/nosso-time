@@ -56,6 +56,17 @@ export interface GameGuest {
   number?: number;
 }
 
+export interface GameLineupPosition {
+  playerId: string;
+  x: number;
+  y: number;
+}
+
+export interface GameLineup {
+  scheme: string;
+  positions: GameLineupPosition[];
+}
+
 export interface Game {
   gameId: string;
   teamId: string;
@@ -68,6 +79,7 @@ export interface Game {
   goals?: GameGoal[];
   confirmedPlayerIds?: string[];
   guests?: GameGuest[];
+  lineup?: GameLineup;
   createdAt: string;
   updatedAt: string;
 }

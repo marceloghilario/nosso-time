@@ -87,6 +87,17 @@ export const CreateGameSchema = z
     { message: 'Resultado é obrigatório para jogos realizados', path: ['result'] },
   );
 
+export const GameLineupPositionSchema = z.object({
+  playerId: z.string().min(1),
+  x: z.number().min(0).max(100),
+  y: z.number().min(0).max(100),
+});
+
+export const GameLineupSchema = z.object({
+  scheme: z.string().min(1).max(20),
+  positions: z.array(GameLineupPositionSchema).max(30),
+});
+
 export const UpdateGameSchema = z
   .object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida (YYYY-MM-DD)'),
@@ -98,6 +109,7 @@ export const UpdateGameSchema = z
     goals: z.array(GameGoalSchema).max(99).optional(),
     confirmedPlayerIds: z.array(z.string().min(1)).max(100).optional(),
     guests: z.array(GameGuestSchema).max(50).optional(),
+    lineup: GameLineupSchema.optional(),
   })
   .refine(
     (val) => val.status !== 'REALIZADO' || val.result !== undefined,
