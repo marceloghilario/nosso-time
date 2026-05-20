@@ -1,10 +1,12 @@
 import { API_URL, AUTH_STORAGE_KEY } from '../utils/constants';
 import type {
+  AdminRequest,
   AuthSession,
   Championship,
   ChampionshipFormat,
   ChampionshipGameGoal,
   ChampionshipGameTeamView,
+  FollowedTeam,
   Formation,
   FormationScheme,
   Game,
@@ -18,6 +20,8 @@ import type {
   PublicTeamDetail,
   PublicTeamSummary,
   Team,
+  TeamMembership,
+  TeamRole,
 } from '../types';
 
 export class ApiError extends Error {
@@ -295,6 +299,42 @@ export const api = {
     request<Media[]>(`/teams/${teamId}/media`),
   listMediaByGame: (teamId: string, gameId: string) =>
     request<Media[]>(`/teams/${teamId}/games/${gameId}/media`),
+
+  followTeam: (teamId: string) =>
+    request<{ teamId: string; role: TeamRole }>(`/teams/${teamId}/follow`, {
+      method: 'POST',
+    }),
+  unfollowTeam: (teamId: string) =>
+    request<{ teamId: string }>(`/teams/${teamId}/follow`, {
+      method: 'DELETE',
+    }),
+  listFollowedTeams: () => request<FollowedTeam[]>('/me/followed-teams'),
+  listTeamMembers: (teamId: string) =>
+    request<TeamMembership[]>(`/teams/${teamId}/members`),
+  removeTeamMember: (teamId: string, userId: string) =>
+    request<{ teamId: string; userId: string; role: TeamRole }>(
+      `/teams/${teamId}/members/${userId}`,
+      { method: 'DELETE' },
+    ),
+
+  createAdminRequest: (teamId: string, note?: string) =>
+    request<AdminRequest>(`/teams/${teamId}/admin-requests`, {
+      method: 'POST',
+      body: note !== undefined ? { note } : {},
+    }),
+  listAdminRequestsForTeam: (teamId: string) =>
+    request<AdminRequest[]>(`/teams/${teamId}/admin-requests`),
+  decideAdminRequest: (
+    teamId: string,
+    requestId: string,
+    action: 'APPROVE' | 'REJECT',
+    note?: string,
+  ) =>
+    request<AdminRequest>(
+      `/teams/${teamId}/admin-requests/${requestId}`,
+      { method: 'PUT', body: note !== undefined ? { action, note } : { action } },
+    ),
+  listMyAdminRequests: () => request<AdminRequest[]>('/me/admin-requests'),
 
   searchPublicTeams: (query: string) => {
     const qs = query ? `?q=${encodeURIComponent(query)}` : '';

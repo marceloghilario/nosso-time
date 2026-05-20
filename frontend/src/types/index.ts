@@ -1,5 +1,7 @@
 export type Plan = 'FREE' | 'PRO';
 
+export type TeamRole = 'OWNER' | 'ADMIN' | 'FOLLOWER';
+
 export interface Team {
   teamId: string;
   ownerId: string;
@@ -15,8 +17,47 @@ export interface Team {
   gameCount?: number;
   /** Number of championships this team participates in — populated by GET /teams/:teamId only. */
   championshipCount?: number;
+  /** Caller's role on this team — populated by GET /teams and GET /teams/:teamId. */
+  myRole?: TeamRole;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface FollowedTeam {
+  teamId: string;
+  name: string;
+  description?: string;
+  logoUrl?: string;
+  photoCount: number;
+  myRole: 'FOLLOWER';
+}
+
+export interface TeamMembership {
+  teamId: string;
+  userId: string;
+  role: TeamRole;
+  addedBy?: string;
+  createdAt: string;
+}
+
+export type AdminRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface AdminRequest {
+  requestId: string;
+  teamId: string;
+  userId: string;
+  requestedRole: 'ADMIN';
+  status: AdminRequestStatus;
+  note?: string;
+  createdAt: string;
+  decidedAt?: string;
+  decidedBy?: string;
+}
+
+export interface PendingAdminRequestSummary {
+  requestId: string;
+  createdAt: string;
+  note?: string;
 }
 
 export type PlayerPosition =
@@ -226,6 +267,9 @@ export interface PublicTeamDetail {
   players: PublicPlayer[];
   games: PublicGame[];
   media: PublicMedia[];
+  /** null when the caller has no relation with the team. */
+  myRole?: TeamRole | null;
+  pendingAdminRequest?: PendingAdminRequestSummary | null;
 }
 
 export const CHAMPIONSHIP_FORMATS = [

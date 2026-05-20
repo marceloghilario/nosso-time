@@ -18,7 +18,7 @@ export const handler = async (
     if (!teamId || !formationId) {
       throw new HttpError('Recurso não encontrado', 404);
     }
-    const team = await teamService.getOwnedTeam(teamId, ownerId);
+    const { team } = await teamService.getManagedTeam(teamId, ownerId);
     const input = parseBody(UpdateFormationSchema, event.body);
     const formation = await formationService.update(team, formationId, input);
     return success(formation);

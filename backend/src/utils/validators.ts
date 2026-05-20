@@ -148,6 +148,15 @@ export const CreateMediaSchema = z.object({
   caption: z.string().max(500).optional(),
 });
 
+export const CreateAdminRequestSchema = z.object({
+  note: z.string().max(500).optional(),
+});
+
+export const DecideAdminRequestSchema = z.object({
+  action: z.enum(['APPROVE', 'REJECT']),
+  note: z.string().max(500).optional(),
+});
+
 export const FormationSchemeSchema = z.enum(FORMATION_SCHEMES);
 
 export const FormationPositionSchema = z.object({

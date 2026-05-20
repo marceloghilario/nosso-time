@@ -17,7 +17,7 @@ export const handler = async (
     if (!teamId || !formationId) {
       throw new HttpError('Recurso não encontrado', 404);
     }
-    const team = await teamService.getOwnedTeam(teamId, ownerId);
+    const { team } = await teamService.getManagedTeam(teamId, ownerId);
     await formationService.delete(team, formationId);
     return success({ message: 'Formação excluída' });
   } catch (err) {

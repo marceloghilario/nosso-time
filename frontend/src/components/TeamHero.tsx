@@ -1,6 +1,16 @@
 import type { ReactNode } from 'react';
-import { Calendar, Camera, Eye, Trophy, Users } from 'lucide-react';
+import {
+  Calendar,
+  Camera,
+  Crown,
+  Eye,
+  ShieldCheck,
+  Trophy,
+  UserCheck,
+  Users,
+} from 'lucide-react';
 import TeamLogo from './TeamLogo';
+import type { TeamRole } from '../types';
 
 interface TeamHeroProps {
   name: string;
@@ -9,6 +19,11 @@ interface TeamHeroProps {
   planLabel?: string;
   isPro?: boolean;
   readOnly?: boolean;
+  /**
+   * Caller's role on this team — renders a colored chip in the hero header.
+   * `null`/`undefined` hides the chip.
+   */
+  myRole?: TeamRole | null;
   playerCount?: number;
   gameCount?: number;
   photoCount?: number;
@@ -126,6 +141,27 @@ const KpiCard = ({ icon, value, label }: KPI) => (
   </div>
 );
 
+const ROLE_CHIP: Record<
+  TeamRole,
+  { label: string; Icon: typeof Crown; classes: string }
+> = {
+  OWNER: {
+    label: 'Owner',
+    Icon: Crown,
+    classes: 'bg-emerald-400/15 text-emerald-200 ring-emerald-300/30',
+  },
+  ADMIN: {
+    label: 'Admin',
+    Icon: ShieldCheck,
+    classes: 'bg-sky-400/15 text-sky-200 ring-sky-300/30',
+  },
+  FOLLOWER: {
+    label: 'Seguidor',
+    Icon: UserCheck,
+    classes: 'bg-white/10 text-white/90 ring-white/20',
+  },
+};
+
 export default function TeamHero({
   name,
   logoUrl,
@@ -133,6 +169,7 @@ export default function TeamHero({
   planLabel,
   isPro,
   readOnly,
+  myRole,
   playerCount,
   gameCount,
   photoCount,
@@ -202,6 +239,18 @@ export default function TeamHero({
                 </p>
               )}
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                {myRole && (() => {
+                  const cfg = ROLE_CHIP[myRole];
+                  const Icon = cfg.Icon;
+                  return (
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${cfg.classes}`}
+                    >
+                      <Icon className="w-3 h-3" />
+                      {cfg.label}
+                    </span>
+                  );
+                })()}
                 {planLabel && (
                   <span
                     className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${

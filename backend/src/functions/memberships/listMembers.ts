@@ -3,24 +3,28 @@ import type {
   APIGatewayProxyResultV2,
 } from 'aws-lambda';
 import { getUserId } from '../../utils/auth';
-import { CreateGameSchema, parseBody } from '../../utils/validators';
 import { HttpError, success, handleError } from '../../utils/response';
-import { teamService } from '../../services/teamService';
-import { gameService } from '../../services/gameService';
+import { membershipService } from '../../services/membershipService';
 
+/**
+ * GET /teams/:teamId/members
+ *
+ * OWNER-only. Returns every membership row (owner + admins + followers) so
+ * the owner UI can list and manage them.
+ */
 export const handler = async (
   event: APIGatewayProxyEventV2WithJWTAuthorizer,
 ): Promise<APIGatewayProxyResultV2> => {
   try {
-    const ownerId = getUserId(event);
+    const userId = getUserId(event);
     const teamId = event.pathParameters?.teamId;
     if (!teamId) {
       throw new HttpError('Recurso não encontrado', 404);
     }
-    await teamService.getManagedTeam(teamId, ownerId);
-    const input = parseBody(CreateGameSchema, event.body);
-    const game = await gameService.create(teamId, input);
-    return success(game, 201);
+    await membershipService.requireRole(teamId, userId, ['OWNER']);
+    const members = await membershipService.listMembersOfTeam(teamId);
+    members.sort((a, b) => a.role.localeCompare(b.role));
+    return success(members);
   } catch (err) {
     return handleError(err);
   }
