@@ -8,6 +8,7 @@ import GameList from '../components/GameList';
 import PhotoGallery from '../components/PhotoGallery';
 import TeamHero from '../components/TeamHero';
 import TabBar, { type TabItem } from '../components/TabBar';
+import TeamQuickStats from '../components/TeamQuickStats';
 import type {
   Game,
   Media,
@@ -91,6 +92,10 @@ export default function PublicTeamDetail() {
             }
             championshipCount={state.data.team.championshipCount}
           />
+
+          {state.data.games.length > 0 && (
+            <TeamQuickStats games={state.data.games} />
+          )}
 
           {(() => {
             const tabItems: TabItem<Tab>[] = [

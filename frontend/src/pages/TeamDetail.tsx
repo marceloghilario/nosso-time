@@ -10,6 +10,7 @@ import PhotoGallery from '../components/PhotoGallery';
 import TeamLogoUploader from '../components/TeamLogoUploader';
 import TeamHero from '../components/TeamHero';
 import TabBar, { type TabItem } from '../components/TabBar';
+import TeamQuickStats from '../components/TeamQuickStats';
 import type { Team } from '../types';
 
 type Tab = 'players' | 'games' | 'gallery';
@@ -72,6 +73,10 @@ export default function TeamDetail() {
               />
             }
           />
+
+          {gamesReq.data && gamesReq.data.length > 0 && (
+            <TeamQuickStats games={gamesReq.data} />
+          )}
 
           {(() => {
             const tabItems: TabItem<Tab | 'tatica'>[] = [
