@@ -11,11 +11,11 @@ export default function PhotoGallery({ media }: Props) {
 
   if (media.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
-        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-          <ImageIcon className="w-6 h-6 text-gray-400" />
+      <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-8 text-center">
+        <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+          <ImageIcon className="w-6 h-6 text-slate-400" />
         </div>
-        <p className="text-gray-600">Nenhuma foto enviada ainda.</p>
+        <p className="text-slate-600">Nenhuma foto enviada ainda.</p>
       </div>
     );
   }
@@ -31,7 +31,7 @@ export default function PhotoGallery({ media }: Props) {
             key={m.mediaId}
             type="button"
             onClick={() => setOpenIndex(idx)}
-            className="aspect-square rounded-lg overflow-hidden bg-gray-100 hover:ring-2 hover:ring-primary-500 transition"
+            className="aspect-square rounded-xl overflow-hidden bg-slate-100 ring-1 ring-slate-200/70 shadow-sm hover:ring-2 hover:ring-primary-500 hover:shadow-md transition"
           >
             <img
               src={m.url}

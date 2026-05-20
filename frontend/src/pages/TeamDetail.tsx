@@ -37,12 +37,12 @@ export default function TeamDetail() {
   const team = teamOverride ?? teamReq.data;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <Link
         to="/teams"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900"
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-slate-600 bg-white ring-1 ring-slate-200/80 shadow-sm hover:text-slate-900 hover:bg-slate-50 transition"
       >
-        <ArrowLeft className="w-4 h-4" />
+        <ArrowLeft className="w-3.5 h-3.5" />
         Meus times
       </Link>
 
@@ -120,46 +120,42 @@ export default function TeamDetail() {
             );
           })()}
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-4 sm:p-5 space-y-4">
-              {tab === 'players' && (
-                <>
-                  <ActionRow
-                    to={`/teams/${teamId}/jogadores/novo`}
-                    label="Adicionar jogador"
-                  />
-                  {playersReq.loading && <LoadingSpinner label="Carregando jogadores..." />}
-                  {playersReq.error && (
-                    <ErrorBox message={playersReq.error} />
-                  )}
-                  {playersReq.data && <PlayerList players={playersReq.data} />}
-                </>
-              )}
-              {tab === 'games' && (
-                <>
-                  <ActionRow
-                    to={`/teams/${teamId}/jogos/novo`}
-                    label="Adicionar jogo"
-                  />
-                  {gamesReq.loading && <LoadingSpinner label="Carregando jogos..." />}
-                  {gamesReq.error && <ErrorBox message={gamesReq.error} />}
-                  {gamesReq.data && (
-                    <GameList teamId={teamId} games={gamesReq.data} />
-                  )}
-                </>
-              )}
-              {tab === 'gallery' && (
-                <>
-                  <ActionRow
-                    to={`/teams/${teamId}/upload`}
-                    label="Enviar foto"
-                  />
-                  {mediaReq.loading && <LoadingSpinner label="Carregando fotos..." />}
-                  {mediaReq.error && <ErrorBox message={mediaReq.error} />}
-                  {mediaReq.data && <PhotoGallery media={mediaReq.data} />}
-                </>
-              )}
-            </div>
+          <div className="space-y-3">
+            {tab === 'players' && (
+              <>
+                <ActionRow
+                  to={`/teams/${teamId}/jogadores/novo`}
+                  label="Adicionar jogador"
+                />
+                {playersReq.loading && <LoadingSpinner label="Carregando jogadores..." />}
+                {playersReq.error && <ErrorBox message={playersReq.error} />}
+                {playersReq.data && <PlayerList players={playersReq.data} />}
+              </>
+            )}
+            {tab === 'games' && (
+              <>
+                <ActionRow
+                  to={`/teams/${teamId}/jogos/novo`}
+                  label="Adicionar jogo"
+                />
+                {gamesReq.loading && <LoadingSpinner label="Carregando jogos..." />}
+                {gamesReq.error && <ErrorBox message={gamesReq.error} />}
+                {gamesReq.data && (
+                  <GameList teamId={teamId} games={gamesReq.data} />
+                )}
+              </>
+            )}
+            {tab === 'gallery' && (
+              <>
+                <ActionRow
+                  to={`/teams/${teamId}/upload`}
+                  label="Enviar foto"
+                />
+                {mediaReq.loading && <LoadingSpinner label="Carregando fotos..." />}
+                {mediaReq.error && <ErrorBox message={mediaReq.error} />}
+                {mediaReq.data && <PhotoGallery media={mediaReq.data} />}
+              </>
+            )}
           </div>
         </>
       )}

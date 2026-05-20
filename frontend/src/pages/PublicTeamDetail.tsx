@@ -60,12 +60,12 @@ export default function PublicTeamDetail() {
   }, [teamId, navigate]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <Link
         to="/explorar"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900"
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-slate-600 bg-white ring-1 ring-slate-200/80 shadow-sm hover:text-slate-900 hover:bg-slate-50 transition"
       >
-        <ArrowLeft className="w-4 h-4" />
+        <ArrowLeft className="w-3.5 h-3.5" />
         Explorar
       </Link>
 
@@ -123,24 +123,22 @@ export default function PublicTeamDetail() {
             );
           })()}
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-4 sm:p-5 space-y-4">
-              {tab === 'players' && (
-                <PlayerList
-                  players={state.data.players as unknown as Player[]}
-                />
-              )}
-              {tab === 'games' && (
-                <GameList
-                  teamId={teamId}
-                  games={state.data.games as unknown as Game[]}
-                  readOnly
-                />
-              )}
-              {tab === 'gallery' && (
-                <PhotoGallery media={state.data.media as unknown as Media[]} />
-              )}
-            </div>
+          <div className="space-y-3">
+            {tab === 'players' && (
+              <PlayerList
+                players={state.data.players as unknown as Player[]}
+              />
+            )}
+            {tab === 'games' && (
+              <GameList
+                teamId={teamId}
+                games={state.data.games as unknown as Game[]}
+                readOnly
+              />
+            )}
+            {tab === 'gallery' && (
+              <PhotoGallery media={state.data.media as unknown as Media[]} />
+            )}
           </div>
         </>
       )}
