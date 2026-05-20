@@ -67,8 +67,10 @@ export default function Layout() {
           </div>
         </div>
       </header>
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-6">
-        <Outlet />
+      <main className="flex-1 w-full bg-gradient-to-b from-slate-50 via-slate-50/60 to-white">
+        <div className="max-w-5xl mx-auto w-full px-4 py-6">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

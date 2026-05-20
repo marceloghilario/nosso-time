@@ -7,6 +7,7 @@ import { enrichTeamWithLogoUrl, teamService } from '../../services/teamService';
 import { playerService } from '../../services/playerService';
 import { gameService } from '../../services/gameService';
 import { mediaService } from '../../services/mediaService';
+import { championshipService } from '../../services/championshipService';
 
 export const handler = async (
   event: APIGatewayProxyEventV2WithJWTAuthorizer,
@@ -18,10 +19,11 @@ export const handler = async (
     }
     const team = await teamService.getPublicById(teamId);
     const enriched = await enrichTeamWithLogoUrl(team);
-    const [players, games, media] = await Promise.all([
+    const [players, games, media, championshipCount] = await Promise.all([
       playerService.listByTeam(teamId),
       gameService.listByTeam(teamId),
       mediaService.listByTeam(teamId),
+      championshipService.countByTeamParticipation(teamId),
     ]);
 
     return success({
@@ -32,6 +34,9 @@ export const handler = async (
         photoCount: enriched.photoCount,
         logoUrl: enriched.logoUrl,
         createdAt: enriched.createdAt,
+        playerCount: players.length,
+        gameCount: games.length,
+        championshipCount,
       },
       players: players.map((p) => ({
         playerId: p.playerId,

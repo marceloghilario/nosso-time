@@ -8,6 +8,9 @@ import PlayerList from '../components/PlayerList';
 import GameList from '../components/GameList';
 import PhotoGallery from '../components/PhotoGallery';
 import TeamLogoUploader from '../components/TeamLogoUploader';
+import TeamHero from '../components/TeamHero';
+import TabBar, { type TabItem } from '../components/TabBar';
+import TeamQuickStats from '../components/TeamQuickStats';
 import type { Team } from '../types';
 
 type Tab = 'players' | 'games' | 'gallery';
@@ -34,12 +37,12 @@ export default function TeamDetail() {
   const team = teamOverride ?? teamReq.data;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <Link
         to="/teams"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900"
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-slate-600 bg-white ring-1 ring-slate-200/80 shadow-sm hover:text-slate-900 hover:bg-slate-50 transition"
       >
-        <ArrowLeft className="w-4 h-4" />
+        <ArrowLeft className="w-3.5 h-3.5" />
         Meus times
       </Link>
 
@@ -52,131 +55,111 @@ export default function TeamDetail() {
 
       {team && (
         <>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-4 min-w-0">
-                <TeamLogoUploader
-                  team={team}
-                  size={80}
-                  onChange={handleTeamUpdated}
+          <TeamHero
+            name={team.name}
+            logoUrl={team.logoUrl}
+            description={team.description}
+            planLabel={`Plano ${team.plan}`}
+            isPro={team.plan === 'PRO'}
+            playerCount={team.playerCount ?? playersReq.data?.length}
+            gameCount={team.gameCount ?? gamesReq.data?.length}
+            photoCount={team.photoCount ?? mediaReq.data?.length}
+            championshipCount={team.championshipCount}
+            logoSlot={
+              <TeamLogoUploader
+                team={team}
+                size={88}
+                onChange={handleTeamUpdated}
+              />
+            }
+          />
+
+          {gamesReq.data && gamesReq.data.length > 0 && (
+            <TeamQuickStats games={gamesReq.data} />
+          )}
+
+          {(() => {
+            const tabItems: TabItem<Tab | 'tatica'>[] = [
+              {
+                id: 'players',
+                label: 'Jogadores',
+                icon: <Users className="w-4 h-4" />,
+                count: playersReq.data?.length,
+              },
+              {
+                id: 'tatica',
+                label: 'Campo',
+                icon: <LayoutGrid className="w-4 h-4" />,
+                navigateOnly: true,
+              },
+              {
+                id: 'games',
+                label: 'Jogos',
+                icon: <Calendar className="w-4 h-4" />,
+                count: gamesReq.data?.length,
+              },
+              {
+                id: 'gallery',
+                label: 'Galeria',
+                icon: <Camera className="w-4 h-4" />,
+                count: mediaReq.data?.length,
+              },
+            ];
+            return (
+              <TabBar
+                items={tabItems}
+                value={tab}
+                onChange={(id) => {
+                  if (id === 'tatica') {
+                    navigate(`/teams/${teamId}/tatica`);
+                    return;
+                  }
+                  setTab(id);
+                }}
+              />
+            );
+          })()}
+
+          <div className="space-y-3">
+            {tab === 'players' && (
+              <>
+                <ActionRow
+                  to={`/teams/${teamId}/jogadores/novo`}
+                  label="Adicionar jogador"
                 />
-                <div className="min-w-0">
-                  <h2 className="text-xl font-bold text-gray-900 truncate">{team.name}</h2>
-                  {team.description && (
-                    <p className="text-sm text-gray-500 mt-1">{team.description}</p>
-                  )}
-                </div>
-              </div>
-              <span
-                className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                  team.plan === 'PRO'
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                Plano {team.plan}
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="flex border-b border-gray-100">
-              <TabButton
-                active={tab === 'players'}
-                onClick={() => setTab('players')}
-                icon={<Users className="w-4 h-4" />}
-                label="Jogadores"
-              />
-              <TabButton
-                active={false}
-                onClick={() => navigate(`/teams/${teamId}/tatica`)}
-                icon={<LayoutGrid className="w-4 h-4" />}
-                label="Campo"
-              />
-              <TabButton
-                active={tab === 'games'}
-                onClick={() => setTab('games')}
-                icon={<Calendar className="w-4 h-4" />}
-                label="Jogos"
-              />
-              <TabButton
-                active={tab === 'gallery'}
-                onClick={() => setTab('gallery')}
-                icon={<Camera className="w-4 h-4" />}
-                label="Galeria"
-              />
-            </div>
-
-            <div className="p-4 sm:p-5 space-y-4">
-              {tab === 'players' && (
-                <>
-                  <ActionRow
-                    to={`/teams/${teamId}/jogadores/novo`}
-                    label="Adicionar jogador"
-                  />
-                  {playersReq.loading && <LoadingSpinner label="Carregando jogadores..." />}
-                  {playersReq.error && (
-                    <ErrorBox message={playersReq.error} />
-                  )}
-                  {playersReq.data && <PlayerList players={playersReq.data} />}
-                </>
-              )}
-              {tab === 'games' && (
-                <>
-                  <ActionRow
-                    to={`/teams/${teamId}/jogos/novo`}
-                    label="Adicionar jogo"
-                  />
-                  {gamesReq.loading && <LoadingSpinner label="Carregando jogos..." />}
-                  {gamesReq.error && <ErrorBox message={gamesReq.error} />}
-                  {gamesReq.data && (
-                    <GameList teamId={teamId} games={gamesReq.data} />
-                  )}
-                </>
-              )}
-              {tab === 'gallery' && (
-                <>
-                  <ActionRow
-                    to={`/teams/${teamId}/upload`}
-                    label="Enviar foto"
-                  />
-                  {mediaReq.loading && <LoadingSpinner label="Carregando fotos..." />}
-                  {mediaReq.error && <ErrorBox message={mediaReq.error} />}
-                  {mediaReq.data && <PhotoGallery media={mediaReq.data} />}
-                </>
-              )}
-            </div>
+                {playersReq.loading && <LoadingSpinner label="Carregando jogadores..." />}
+                {playersReq.error && <ErrorBox message={playersReq.error} />}
+                {playersReq.data && <PlayerList players={playersReq.data} />}
+              </>
+            )}
+            {tab === 'games' && (
+              <>
+                <ActionRow
+                  to={`/teams/${teamId}/jogos/novo`}
+                  label="Adicionar jogo"
+                />
+                {gamesReq.loading && <LoadingSpinner label="Carregando jogos..." />}
+                {gamesReq.error && <ErrorBox message={gamesReq.error} />}
+                {gamesReq.data && (
+                  <GameList teamId={teamId} games={gamesReq.data} />
+                )}
+              </>
+            )}
+            {tab === 'gallery' && (
+              <>
+                <ActionRow
+                  to={`/teams/${teamId}/upload`}
+                  label="Enviar foto"
+                />
+                {mediaReq.loading && <LoadingSpinner label="Carregando fotos..." />}
+                {mediaReq.error && <ErrorBox message={mediaReq.error} />}
+                {mediaReq.data && <PhotoGallery media={mediaReq.data} />}
+              </>
+            )}
           </div>
         </>
       )}
     </div>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${
-        active
-          ? 'text-primary-700 border-b-2 border-primary-600 bg-primary-50/40'
-          : 'text-gray-500 hover:text-gray-800'
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
   );
 }
 

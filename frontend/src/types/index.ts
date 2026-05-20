@@ -9,6 +9,12 @@ export interface Team {
   logoUrl?: string;
   plan: Plan;
   photoCount: number;
+  /** Number of players in the team — populated by GET /teams/:teamId only. */
+  playerCount?: number;
+  /** Number of games registered for the team — populated by GET /teams/:teamId only. */
+  gameCount?: number;
+  /** Number of championships this team participates in — populated by GET /teams/:teamId only. */
+  championshipCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -182,6 +188,9 @@ export interface PublicTeam {
   photoCount: number;
   logoUrl?: string;
   createdAt: string;
+  playerCount?: number;
+  gameCount?: number;
+  championshipCount?: number;
 }
 
 export interface PublicPlayer {
