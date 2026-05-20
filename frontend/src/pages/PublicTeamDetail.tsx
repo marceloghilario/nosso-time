@@ -7,6 +7,7 @@ import PlayerList from '../components/PlayerList';
 import GameList from '../components/GameList';
 import PhotoGallery from '../components/PhotoGallery';
 import TeamHero from '../components/TeamHero';
+import TabBar, { type TabItem } from '../components/TabBar';
 import type {
   Game,
   Media,
@@ -91,28 +92,33 @@ export default function PublicTeamDetail() {
             championshipCount={state.data.team.championshipCount}
           />
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="flex border-b border-gray-100">
-              <TabButton
-                active={tab === 'players'}
-                onClick={() => setTab('players')}
-                icon={<Users className="w-4 h-4" />}
-                label={`Jogadores (${state.data.players.length})`}
-              />
-              <TabButton
-                active={tab === 'games'}
-                onClick={() => setTab('games')}
-                icon={<Calendar className="w-4 h-4" />}
-                label={`Jogos (${state.data.games.length})`}
-              />
-              <TabButton
-                active={tab === 'gallery'}
-                onClick={() => setTab('gallery')}
-                icon={<Camera className="w-4 h-4" />}
-                label={`Galeria (${state.data.media.length})`}
-              />
-            </div>
+          {(() => {
+            const tabItems: TabItem<Tab>[] = [
+              {
+                id: 'players',
+                label: 'Jogadores',
+                icon: <Users className="w-4 h-4" />,
+                count: state.data.players.length,
+              },
+              {
+                id: 'games',
+                label: 'Jogos',
+                icon: <Calendar className="w-4 h-4" />,
+                count: state.data.games.length,
+              },
+              {
+                id: 'gallery',
+                label: 'Galeria',
+                icon: <Camera className="w-4 h-4" />,
+                count: state.data.media.length,
+              },
+            ];
+            return (
+              <TabBar items={tabItems} value={tab} onChange={setTab} />
+            );
+          })()}
 
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 sm:p-5 space-y-4">
               {tab === 'players' && (
                 <PlayerList
@@ -137,29 +143,4 @@ export default function PublicTeamDetail() {
   );
 }
 
-function TabButton({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${
-        active
-          ? 'text-primary-700 border-b-2 border-primary-600 bg-primary-50/40'
-          : 'text-gray-500 hover:text-gray-800'
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
+
