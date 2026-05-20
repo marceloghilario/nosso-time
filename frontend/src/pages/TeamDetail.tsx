@@ -8,6 +8,7 @@ import PlayerList from '../components/PlayerList';
 import GameList from '../components/GameList';
 import PhotoGallery from '../components/PhotoGallery';
 import TeamLogoUploader from '../components/TeamLogoUploader';
+import TeamHero from '../components/TeamHero';
 import type { Team } from '../types';
 
 type Tab = 'players' | 'games' | 'gallery';
@@ -52,32 +53,24 @@ export default function TeamDetail() {
 
       {team && (
         <>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-4 min-w-0">
-                <TeamLogoUploader
-                  team={team}
-                  size={80}
-                  onChange={handleTeamUpdated}
-                />
-                <div className="min-w-0">
-                  <h2 className="text-xl font-bold text-gray-900 truncate">{team.name}</h2>
-                  {team.description && (
-                    <p className="text-sm text-gray-500 mt-1">{team.description}</p>
-                  )}
-                </div>
-              </div>
-              <span
-                className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                  team.plan === 'PRO'
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                Plano {team.plan}
-              </span>
-            </div>
-          </div>
+          <TeamHero
+            name={team.name}
+            logoUrl={team.logoUrl}
+            description={team.description}
+            planLabel={`Plano ${team.plan}`}
+            isPro={team.plan === 'PRO'}
+            playerCount={team.playerCount ?? playersReq.data?.length}
+            gameCount={team.gameCount ?? gamesReq.data?.length}
+            photoCount={team.photoCount ?? mediaReq.data?.length}
+            championshipCount={team.championshipCount}
+            logoSlot={
+              <TeamLogoUploader
+                team={team}
+                size={88}
+                onChange={handleTeamUpdated}
+              />
+            }
+          />
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="flex border-b border-gray-100">

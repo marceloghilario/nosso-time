@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Camera, Eye, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Camera, Users } from 'lucide-react';
 import { api, ApiError } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import PlayerList from '../components/PlayerList';
 import GameList from '../components/GameList';
 import PhotoGallery from '../components/PhotoGallery';
-import TeamLogo from '../components/TeamLogo';
+import TeamHero from '../components/TeamHero';
 import type {
   Game,
   Media,
@@ -76,31 +76,20 @@ export default function PublicTeamDetail() {
 
       {state.status === 'success' && (
         <>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-4 min-w-0">
-                <TeamLogo
-                  name={state.data.team.name}
-                  logoUrl={state.data.team.logoUrl}
-                  size={80}
-                />
-                <div className="min-w-0">
-                  <h2 className="text-xl font-bold text-gray-900 truncate">
-                    {state.data.team.name}
-                  </h2>
-                  {state.data.team.description && (
-                    <p className="text-sm text-gray-500 mt-1">
-                      {state.data.team.description}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 whitespace-nowrap">
-                <Eye className="w-3 h-3" />
-                Somente leitura
-              </span>
-            </div>
-          </div>
+          <TeamHero
+            name={state.data.team.name}
+            logoUrl={state.data.team.logoUrl}
+            description={state.data.team.description}
+            readOnly
+            playerCount={
+              state.data.team.playerCount ?? state.data.players.length
+            }
+            gameCount={state.data.team.gameCount ?? state.data.games.length}
+            photoCount={
+              state.data.team.photoCount ?? state.data.media.length
+            }
+            championshipCount={state.data.team.championshipCount}
+          />
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="flex border-b border-gray-100">

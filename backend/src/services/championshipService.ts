@@ -3,6 +3,7 @@ import {
   GetCommand,
   PutCommand,
   QueryCommand,
+  ScanCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { v4 as uuid } from 'uuid';
@@ -219,6 +220,38 @@ export const championshipService = {
       }),
     );
     return (result.Items ?? []) as Championship[];
+  },
+
+  /**
+   * Count the championships that include `teamId` as a participant.
+   * Uses a full scan of the championships table; acceptable while the dataset
+   * is small. Migrate to a participants-by-team GSI when this becomes hot.
+   */
+  async countByTeamParticipation(teamId: string): Promise<number> {
+    let count = 0;
+    let ExclusiveStartKey: Record<string, unknown> | undefined;
+    do {
+      const result = await docClient.send(
+        new ScanCommand({
+          TableName: TABLES.CHAMPIONSHIPS,
+          ProjectionExpression: 'championshipId, participants',
+          ExclusiveStartKey,
+        }),
+      );
+      const items = (result.Items ?? []) as Array<{
+        participants?: ChampionshipParticipant[];
+      }>;
+      for (const c of items) {
+        if (
+          Array.isArray(c.participants) &&
+          c.participants.some((p) => p.teamId === teamId)
+        ) {
+          count += 1;
+        }
+      }
+      ExclusiveStartKey = result.LastEvaluatedKey;
+    } while (ExclusiveStartKey);
+    return count;
   },
 
   async getOwned(championshipId: string, ownerId: string): Promise<Championship> {
