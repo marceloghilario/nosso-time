@@ -67,7 +67,7 @@ export default function Layout() {
           </div>
         </div>
       </header>
-      <main className="flex-1 w-full bg-gradient-to-b from-slate-50 via-slate-50/60 to-white">
+      <main className="flex-1 w-full bg-gradient-to-b from-slate-100 to-slate-200/70">
         <div className="max-w-5xl mx-auto w-full px-4 py-6">
           <Outlet />
         </div>
