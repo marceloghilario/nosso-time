@@ -68,7 +68,7 @@ function ManagedTeams({ teams }: { teams: Team[] }) {
         <span className="text-xs text-slate-400">{teams.length}</span>
       </div>
       {teams.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-12 text-center">
+        <div className="bg-slate-50 rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-12 text-center">
           <div className="w-14 h-14 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-3">
             <Users className="w-7 h-7 text-primary-600" />
           </div>
@@ -90,7 +90,7 @@ function ManagedTeams({ teams }: { teams: Team[] }) {
             <Link
               key={team.teamId}
               to={`/teams/${team.teamId}`}
-              className="group bg-white rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-5 hover:shadow-md hover:ring-primary-300 transition"
+              className="group bg-slate-50 rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-5 hover:shadow-md hover:ring-primary-300 transition"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0">
@@ -168,7 +168,7 @@ function FollowedTeams({
         </div>
       )}
       {teams.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-6 text-center">
+        <div className="bg-slate-50 rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-6 text-center">
           <p className="text-sm text-slate-500">
             Você ainda não segue nenhum time.{' '}
             <Link to="/explorar" className="text-primary-600 font-medium hover:underline">
@@ -181,7 +181,7 @@ function FollowedTeams({
           {teams.map((team) => (
             <div
               key={team.teamId}
-              className="group bg-white rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-4 hover:shadow-md hover:ring-primary-300 transition"
+              className="group bg-slate-50 rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-4 hover:shadow-md hover:ring-primary-300 transition"
             >
               <div className="flex items-start gap-3">
                 <Link

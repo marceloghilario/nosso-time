@@ -63,7 +63,7 @@ export default function TeamFollowActions({
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-4">
+    <div className="bg-slate-50 rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="text-sm text-slate-600">
           {myRole === 'FOLLOWER' ? (

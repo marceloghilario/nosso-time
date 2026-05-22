@@ -58,7 +58,7 @@ export default function CreatePlayer() {
         Voltar
       </Link>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-6">
         <h2 className="text-xl font-bold text-gray-900">Novo jogador</h2>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">

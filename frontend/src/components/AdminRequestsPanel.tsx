@@ -92,7 +92,7 @@ export default function AdminRequestsPanel({ teamId }: AdminRequestsPanelProps) 
   }
 
   return (
-    <section className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-4 sm:p-5 space-y-3">
+    <section className="bg-slate-50 rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-4 sm:p-5 space-y-3">
       <div className="flex items-center gap-2">
         <ShieldCheck className="w-4 h-4 text-slate-500" />
         <h3 className="text-xs uppercase tracking-wider font-semibold text-slate-500">

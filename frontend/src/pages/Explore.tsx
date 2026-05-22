@@ -80,7 +80,7 @@ export default function Explore() {
 
       {state.status === 'success' &&
         (state.data.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+          <div className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-12 text-center">
             <div className="w-14 h-14 bg-primary-50 rounded-full flex items-center justify-center mx-auto mb-3">
               <Search className="w-7 h-7 text-primary-600" />
             </div>
@@ -99,7 +99,7 @@ export default function Explore() {
               <Link
                 key={team.teamId}
                 to={`/explorar/${team.teamId}`}
-                className="group bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-primary-200 transition"
+                className="group bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-5 hover:shadow-md hover:border-primary-200 transition"
               >
                 <div className="flex items-start gap-3 min-w-0">
                   <TeamLogo

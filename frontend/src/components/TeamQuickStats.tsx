@@ -82,7 +82,7 @@ function StatCard({
     },
   };
   return (
-    <div className="bg-white rounded-2xl ring-1 ring-slate-200/70 shadow-sm p-3 sm:p-4 flex flex-col gap-2 min-h-[88px]">
+    <div className="bg-slate-50 rounded-2xl ring-1 ring-slate-200/70 shadow-sm p-3 sm:p-4 flex flex-col gap-2 min-h-[88px]">
       <div className="flex items-center gap-2">
         <div
           className={`inline-flex items-center justify-center w-7 h-7 rounded-lg ${toneClasses[tone].icon}`}

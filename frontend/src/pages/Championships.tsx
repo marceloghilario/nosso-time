@@ -55,7 +55,7 @@ export default function ChampionshipsPage() {
       )}
 
       {data && data.length === 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center">
+        <div className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-6 text-center">
           <Trophy className="w-10 h-10 text-gray-300 mx-auto mb-2" />
           <p className="text-gray-700 font-medium">
             Você ainda não criou nenhum campeonato.
@@ -73,7 +73,7 @@ export default function ChampionshipsPage() {
             <li key={c.championshipId}>
               <Link
                 to={`/campeonatos/${c.championshipId}`}
-                className="block bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow"
+                className="block bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center shrink-0">

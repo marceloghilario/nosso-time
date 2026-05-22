@@ -40,7 +40,7 @@ export default function CreateTeam() {
         Voltar
       </Link>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-6">
         <h2 className="text-xl font-bold text-gray-900">Novo time</h2>
         <p className="text-sm text-gray-500 mt-1">
           Cadastre um time para começar a registrar jogadores, jogos e fotos.

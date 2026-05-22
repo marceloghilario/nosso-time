@@ -20,7 +20,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="bg-white border-b border-gray-200 shadow-sm">
+      <header className="bg-slate-50 border-b border-slate-200 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <Link to="/teams" className="flex items-center gap-2 shrink-0">
             <img

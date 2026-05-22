@@ -163,7 +163,7 @@ export default function CreateChampionship() {
 
       <form
         onSubmit={handleSubmit}
-        className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-5"
+        className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-5 space-y-5"
       >
         <label className="block">
           <span className="text-sm font-medium text-gray-700">

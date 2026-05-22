@@ -420,7 +420,7 @@ export default function GameDetail() {
 
       {game && (
         <>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h2 className="text-xl font-bold text-gray-900 truncate">
@@ -455,7 +455,7 @@ export default function GameDetail() {
 
           <form
             onSubmit={handleSave}
-            className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-5"
+            className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-5 space-y-5"
           >
             <section className="space-y-3">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -850,7 +850,7 @@ export default function GameDetail() {
             </div>
           </form>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
+          <div className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-900 flex items-center gap-1.5">
                 <Camera className="w-4 h-4" />

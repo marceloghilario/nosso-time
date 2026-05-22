@@ -502,7 +502,7 @@ export default function Tactica() {
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
           <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3 rounded-xl bg-white p-3 shadow-sm border border-gray-100">
+            <div className="flex flex-wrap items-center gap-3 rounded-xl bg-slate-50 p-3 shadow-sm border border-slate-200">
               <FormationSelector value={scheme} onChange={setSchemeAndReflow} />
               <button
                 type="button"
@@ -589,7 +589,7 @@ export default function Tactica() {
           </div>
 
           <aside className="space-y-3">
-            <div className="rounded-xl bg-white p-3 shadow-sm border border-gray-100">
+            <div className="rounded-xl bg-slate-50 p-3 shadow-sm border border-slate-200">
               <div className="mb-2 flex gap-1 rounded-lg bg-gray-100 p-1 text-sm">
                 <TabBtn
                   active={tab === 'players'}

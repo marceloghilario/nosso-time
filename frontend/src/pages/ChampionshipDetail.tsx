@@ -122,7 +122,7 @@ export default function ChampionshipDetail() {
         Campeonatos
       </Link>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      <div className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-5">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
             <Trophy className="w-6 h-6 text-primary-600" />

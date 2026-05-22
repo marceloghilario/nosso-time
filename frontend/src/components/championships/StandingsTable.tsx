@@ -15,7 +15,7 @@ const Table = ({
   rows: StandingRow[];
   highlightTop?: number;
 }) => (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+  <div className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 overflow-hidden">
     {title && (
       <h3 className="text-sm font-semibold text-gray-900 px-4 py-2 border-b border-gray-100">
         {title}
