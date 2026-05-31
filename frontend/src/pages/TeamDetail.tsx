@@ -81,7 +81,7 @@ export default function TeamDetail() {
           )}
 
           {gamesReq.data && gamesReq.data.length > 0 && (
-            <TeamQuickStats games={gamesReq.data} />
+            <TeamQuickStats games={gamesReq.data} teamId={teamId} />
           )}
 
           {(() => {
