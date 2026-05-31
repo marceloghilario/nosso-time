@@ -13,7 +13,7 @@ export default function PlayerList({ players }: Props) {
         <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
           <User className="w-6 h-6 text-slate-400" />
         </div>
-        <p className="text-slate-600">Nenhum jogador cadastrado ainda.</p>
+        <p className="text-slate-600">Cadastre seu elenco.</p>
       </div>
     );
   }
