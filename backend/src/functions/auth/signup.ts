@@ -3,6 +3,7 @@ import {
   CognitoIdentityProviderClient,
   SignUpCommand,
   AdminConfirmSignUpCommand,
+  AdminUpdateUserAttributesCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { SignupSchema, parseBody } from '../../utils/validators';
 import { success, handleError, HttpError } from '../../utils/response';
@@ -39,6 +40,14 @@ export const handler = async (
       new AdminConfirmSignUpCommand({
         UserPoolId: USER_POOL_ID,
         Username: input.email,
+      }),
+    );
+
+    await cognito.send(
+      new AdminUpdateUserAttributesCommand({
+        UserPoolId: USER_POOL_ID,
+        Username: input.email,
+        UserAttributes: [{ Name: 'email_verified', Value: 'true' }],
       }),
     );
 

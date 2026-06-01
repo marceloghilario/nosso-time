@@ -143,6 +143,16 @@ export interface LoginInput {
   password: string;
 }
 
+export interface ForgotPasswordInput {
+  email: string;
+}
+
+export interface ResetPasswordInput {
+  email: string;
+  code: string;
+  newPassword: string;
+}
+
 export interface CreateTeamInput {
   name: string;
   description?: string;
@@ -246,6 +256,18 @@ export const api = {
     }),
   login: (input: LoginInput) =>
     request<AuthSession>('/auth/login', {
+      method: 'POST',
+      body: input,
+      auth: false,
+    }),
+  forgotPassword: (input: ForgotPasswordInput) =>
+    request<{ message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: input,
+      auth: false,
+    }),
+  resetPassword: (input: ResetPasswordInput) =>
+    request<{ message: string }>('/auth/reset-password', {
       method: 'POST',
       body: input,
       auth: false,

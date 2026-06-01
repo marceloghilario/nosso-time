@@ -89,6 +89,9 @@ provider:
             - cognito-idp:InitiateAuth
             - cognito-idp:ConfirmSignUp
             - cognito-idp:AdminConfirmSignUp
+            - cognito-idp:AdminUpdateUserAttributes
+            - cognito-idp:ForgotPassword
+            - cognito-idp:ConfirmForgotPassword
           Resource: !GetAtt CognitoUserPool.Arn
 
 functions:
@@ -103,6 +106,18 @@ functions:
     events:
       - httpApi:
           path: /auth/login
+          method: post
+  forgotPassword:
+    handler: src/functions/auth/forgotPassword.handler
+    events:
+      - httpApi:
+          path: /auth/forgot-password
+          method: post
+  resetPassword:
+    handler: src/functions/auth/resetPassword.handler
+    events:
+      - httpApi:
+          path: /auth/reset-password
           method: post
 
   createTeam:
@@ -680,6 +695,10 @@ resources:
           - email
         AutoVerifiedAttributes:
           - email
+        AccountRecoverySetting:
+          RecoveryMechanisms:
+            - Name: verified_email
+              Priority: 1
         Policies:
           PasswordPolicy:
             MinimumLength: 8
@@ -687,6 +706,33 @@ resources:
             RequireNumbers: true
             RequireSymbols: false
             RequireUppercase: true
+        VerificationMessageTemplate:
+          DefaultEmailOption: CONFIRM_WITH_CODE
+          EmailSubject: "Nosso Time — Redefinir senha"
+          EmailMessage: |
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; color: #0f172a;">
+              <h2 style="color: #0f172a; margin: 0 0 16px;">Redefinir senha do Nosso Time</h2>
+              <p style="color: #334155; line-height: 1.5; margin: 0 0 16px;">
+                Recebemos um pedido para redefinir a senha da conta <strong>{username}</strong>.
+                Clique no botão abaixo para escolher uma nova senha.
+              </p>
+              <p style="margin: 24px 0;">
+                <a href="https://dist-kwguvmym.devinapps.com/redefinir-senha?email={username}&code={####}"
+                  style="display: inline-block; padding: 12px 20px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                  Redefinir senha
+                </a>
+              </p>
+              <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin: 16px 0 0;">
+                Se o botão não funcionar, copie e cole este link no navegador:<br>
+                <span style="color: #2563eb; word-break: break-all;">https://dist-kwguvmym.devinapps.com/redefinir-senha?email={username}&amp;code={####}</span>
+              </p>
+              <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin: 16px 0 0;">
+                Código de verificação: <strong>{####}</strong>
+              </p>
+              <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 24px 0 0;">
+                O link expira em 1 hora. Se você não solicitou esta redefinição, ignore este e-mail — sua senha continua a mesma.
+              </p>
+            </div>
         Schema:
           - Name: email
             AttributeDataType: String

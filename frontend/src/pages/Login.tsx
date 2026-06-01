@@ -55,7 +55,15 @@ export default function Login() {
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-gray-700">Senha</span>
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm font-medium text-gray-700">Senha</span>
+              <Link
+                to="/esqueci-senha"
+                className="text-xs font-medium text-primary-700 hover:underline"
+              >
+                Esqueci minha senha
+              </Link>
+            </div>
             <input
               type="password"
               required
