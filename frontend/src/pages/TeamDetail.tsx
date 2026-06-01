@@ -85,9 +85,7 @@ export default function TeamDetail() {
             <TeamQuickStats games={gamesReq.data} teamId={teamId} />
           )}
 
-          {team.championshipCount !== undefined && team.championshipCount > 0 && (
-            <TeamChampionshipMiniStandings teamId={teamId} />
-          )}
+          <TeamChampionshipMiniStandings teamId={teamId} />
 
           {(() => {
             const tabItems: TabItem<Tab | 'tatica'>[] = [
