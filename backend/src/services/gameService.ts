@@ -1,4 +1,6 @@
 import {
+  BatchWriteCommand,
+  DeleteCommand,
   GetCommand,
   PutCommand,
   QueryCommand,
@@ -360,5 +362,45 @@ export const gameService = {
       }),
     );
     return update.Attributes as Game;
+  },
+
+  async delete(teamId: string, gameId: string): Promise<void> {
+    const existing = await this.getById(teamId, gameId);
+    if (existing.championshipRef) {
+      throw new HttpError(
+        'Jogos de campeonato não podem ser excluídos pelo time. Exclua pelo campeonato.',
+        400,
+      );
+    }
+    const mediaResult = await docClient.send(
+      new QueryCommand({
+        TableName: TABLES.MEDIA,
+        IndexName: 'gameId-createdAt-index',
+        KeyConditionExpression: 'gameId = :gameId',
+        FilterExpression: 'teamId = :teamId',
+        ExpressionAttributeValues: { ':gameId': gameId, ':teamId': teamId },
+      }),
+    );
+    const mediaItems = (mediaResult.Items ?? []) as { mediaId: string }[];
+    for (let i = 0; i < mediaItems.length; i += 25) {
+      const batch = mediaItems.slice(i, i + 25);
+      await docClient.send(
+        new BatchWriteCommand({
+          RequestItems: {
+            [TABLES.MEDIA]: batch.map((m) => ({
+              DeleteRequest: { Key: { mediaId: m.mediaId } },
+            })),
+          },
+        }),
+      );
+    }
+    await docClient.send(
+      new DeleteCommand({
+        TableName: TABLES.GAMES,
+        Key: { gameId },
+        ConditionExpression: 'attribute_exists(gameId) AND teamId = :teamId',
+        ExpressionAttributeValues: { ':teamId': teamId },
+      }),
+    );
   },
 };

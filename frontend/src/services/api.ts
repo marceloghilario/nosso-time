@@ -284,6 +284,10 @@ export const api = {
       method: 'PUT',
       body: input,
     }),
+  deleteGame: (teamId: string, gameId: string) =>
+    request<{ message: string }>(`/teams/${teamId}/games/${gameId}`, {
+      method: 'DELETE',
+    }),
 
   getMediaUploadUrl: (teamId: string, input: UploadUrlInput) =>
     request<UploadUrlResponse>(`/teams/${teamId}/media/upload-url`, {

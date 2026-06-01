@@ -286,6 +286,14 @@ functions:
           method: put
           authorizer:
             name: cognitoAuthorizer
+  deleteGame:
+    handler: src/functions/games/delete.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/games/{gameId}
+          method: delete
+          authorizer:
+            name: cognitoAuthorizer
 
   getMediaUploadUrl:
     handler: src/functions/media/getUploadUrl.handler

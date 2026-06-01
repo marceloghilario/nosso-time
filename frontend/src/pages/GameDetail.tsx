@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Camera,
@@ -77,7 +77,28 @@ export default function GameDetail() {
     teamId: string;
     gameId: string;
   }>();
+  const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async (): Promise<void> => {
+    if (deleting) return;
+    const confirmed = window.confirm(
+      'Tem certeza que deseja excluir este jogo? Esta ação não pode ser desfeita.',
+    );
+    if (!confirmed) return;
+    setDeleting(true);
+    try {
+      await api.deleteGame(teamId, gameId);
+      showSuccess('Jogo excluído');
+      navigate(`/teams/${teamId}`, { replace: true });
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : 'Erro ao excluir o jogo';
+      showError(message);
+      setDeleting(false);
+    }
+  };
 
   const gameReq = useApi(() => api.getGame(teamId, gameId), [teamId, gameId]);
   const playersReq = useApi(() => api.listPlayers(teamId), [teamId]);
@@ -838,10 +859,25 @@ export default function GameDetail() {
               </label>
             </section>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+              {!fromChampionship ? (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting || saving}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-sm font-medium text-rose-700 ring-1 ring-rose-200 hover:bg-rose-50 hover:ring-rose-300 disabled:opacity-60"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {deleting ? 'Excluindo…' : 'Excluir jogo'}
+                </button>
+              ) : (
+                <span className="text-xs text-slate-500">
+                  Jogo de campeonato. Para excluir, abra o campeonato.
+                </span>
+              )}
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || deleting}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-60"
               >
                 <Save className="w-4 h-4" />
