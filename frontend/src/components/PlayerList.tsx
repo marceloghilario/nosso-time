@@ -9,11 +9,11 @@ interface Props {
 export default function PlayerList({ players }: Props) {
   if (players.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-8 text-center">
+      <div className="bg-slate-50 rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-8 text-center">
         <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
           <User className="w-6 h-6 text-slate-400" />
         </div>
-        <p className="text-slate-600">Nenhum jogador cadastrado ainda.</p>
+        <p className="text-slate-600">Cadastre seu elenco.</p>
       </div>
     );
   }
@@ -21,7 +21,7 @@ export default function PlayerList({ players }: Props) {
   const sorted = [...players].sort(comparePlayers);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200/70 overflow-hidden">
+    <div className="bg-slate-50 rounded-2xl shadow-sm ring-1 ring-slate-200/70 overflow-hidden">
       <ul className="divide-y divide-slate-100">
         {sorted.map((player) => (
           <li

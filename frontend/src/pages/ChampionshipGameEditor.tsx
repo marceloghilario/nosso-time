@@ -367,7 +367,7 @@ export default function ChampionshipGameEditor() {
         {championship.name}
       </Link>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      <div className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-5">
         <div className="flex items-center gap-3">
           <Trophy className="w-5 h-5 text-primary-600 shrink-0" />
           <h2 className="text-lg font-bold text-gray-900">
@@ -380,7 +380,7 @@ export default function ChampionshipGameEditor() {
         </p>
       </div>
 
-      <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
+      <section className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
           Dados da partida
         </h3>
@@ -416,7 +416,7 @@ export default function ChampionshipGameEditor() {
         </label>
       </section>
 
-      <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
+      <section className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
           Placar
         </h3>
@@ -475,7 +475,7 @@ export default function ChampionshipGameEditor() {
         )}
       </section>
 
-      <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
+      <section className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
           Autores dos gols
         </h3>
@@ -630,7 +630,7 @@ function TeamSidePanel({
 }) {
   if (loading) {
     return (
-      <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      <section className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-5">
         <h3 className="text-sm font-semibold text-gray-900 mb-2">{title}</h3>
         <LoadingSpinner label="Carregando dados do time..." />
       </section>
@@ -638,7 +638,7 @@ function TeamSidePanel({
   }
   if (error) {
     return (
-      <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-2">
+      <section className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-5 space-y-2">
         <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
         <p className="text-xs text-rose-600">{error}</p>
       </section>
@@ -659,7 +659,7 @@ function TeamSidePanel({
   const lineup: GameLineup | null = view.lineup;
 
   return (
-    <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-3">
+    <section className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-5 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
         <span className="text-[10px] uppercase tracking-wider text-gray-400">

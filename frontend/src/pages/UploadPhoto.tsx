@@ -63,7 +63,7 @@ export default function UploadPhoto() {
         Voltar
       </Link>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-6">
         <h2 className="text-xl font-bold text-gray-900">Enviar foto</h2>
         <p className="text-sm text-gray-500 mt-1">
           A foto fica vinculada ao time e, opcionalmente, a um jogo específico.

@@ -34,8 +34,8 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-primary-50 to-white">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-b from-slate-100 to-slate-200/70">
+      <div className="w-full max-w-md bg-slate-50 rounded-2xl shadow-lg border border-slate-200 p-8">
         <div className="flex flex-col items-center text-center mb-6">
           <img
             src="/logo-512.png"

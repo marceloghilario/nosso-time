@@ -28,8 +28,8 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-primary-50 to-white">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-b from-slate-100 to-slate-200/70">
+      <div className="w-full max-w-md bg-slate-50 rounded-2xl shadow-lg border border-slate-200 p-8">
         <div className="flex flex-col items-center text-center mb-6">
           <img
             src="/logo-512.png"
@@ -55,7 +55,15 @@ export default function Login() {
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-gray-700">Senha</span>
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm font-medium text-gray-700">Senha</span>
+              <Link
+                to="/esqueci-senha"
+                className="text-xs font-medium text-primary-700 hover:underline"
+              >
+                Esqueci minha senha
+              </Link>
+            </div>
             <input
               type="password"
               required

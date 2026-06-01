@@ -11,6 +11,8 @@ import TeamLogoUploader from '../components/TeamLogoUploader';
 import TeamHero from '../components/TeamHero';
 import TabBar, { type TabItem } from '../components/TabBar';
 import TeamQuickStats from '../components/TeamQuickStats';
+import TeamChampionshipMiniStandings from '../components/TeamChampionshipMiniStandings';
+import AdminRequestsPanel from '../components/AdminRequestsPanel';
 import type { Team } from '../types';
 
 type Tab = 'players' | 'games' | 'gallery';
@@ -61,6 +63,7 @@ export default function TeamDetail() {
             description={team.description}
             planLabel={`Plano ${team.plan}`}
             isPro={team.plan === 'PRO'}
+            myRole={team.myRole ?? null}
             playerCount={team.playerCount ?? playersReq.data?.length}
             gameCount={team.gameCount ?? gamesReq.data?.length}
             photoCount={team.photoCount ?? mediaReq.data?.length}
@@ -74,9 +77,15 @@ export default function TeamDetail() {
             }
           />
 
-          {gamesReq.data && gamesReq.data.length > 0 && (
-            <TeamQuickStats games={gamesReq.data} />
+          {team.myRole === 'OWNER' && (
+            <AdminRequestsPanel teamId={teamId} />
           )}
+
+          {gamesReq.data && gamesReq.data.length > 0 && (
+            <TeamQuickStats games={gamesReq.data} teamId={teamId} />
+          )}
+
+          <TeamChampionshipMiniStandings teamId={teamId} />
 
           {(() => {
             const tabItems: TabItem<Tab | 'tatica'>[] = [

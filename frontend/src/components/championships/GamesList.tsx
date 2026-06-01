@@ -141,7 +141,7 @@ const GameRow = ({
   const scheduled = formatScheduledLabel(game);
 
   return (
-    <li className="bg-white rounded-xl shadow-sm border border-gray-100 p-3">
+    <li className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-3">
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex-1 min-w-[10rem] text-right text-sm font-medium text-gray-900 truncate">
           {game.homeTeamName ?? <span className="text-gray-400">A definir</span>}

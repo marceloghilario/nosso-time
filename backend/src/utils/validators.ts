@@ -12,6 +12,20 @@ export const LoginSchema = z.object({
   password: z.string().min(1, 'Senha é obrigatória'),
 });
 
+export const ForgotPasswordSchema = z.object({
+  email: z.string().email('E-mail inválido'),
+});
+
+export const ResetPasswordSchema = z.object({
+  email: z.string().email('E-mail inválido'),
+  code: z
+    .string()
+    .min(1, 'Código é obrigatório')
+    .max(20, 'Código inválido')
+    .regex(/^[A-Za-z0-9-]+$/, 'Código inválido'),
+  newPassword: z.string().min(8, 'Senha deve ter ao menos 8 caracteres'),
+});
+
 export const CreateTeamSchema = z.object({
   name: z.string().min(1, 'Nome do time é obrigatório').max(100),
   description: z.string().max(500).optional(),
@@ -146,6 +160,15 @@ export const CreateMediaSchema = z.object({
   type: MediaTypeSchema,
   gameId: z.string().min(1).optional(),
   caption: z.string().max(500).optional(),
+});
+
+export const CreateAdminRequestSchema = z.object({
+  note: z.string().max(500).optional(),
+});
+
+export const DecideAdminRequestSchema = z.object({
+  action: z.enum(['APPROVE', 'REJECT']),
+  note: z.string().max(500).optional(),
 });
 
 export const FormationSchemeSchema = z.enum(FORMATION_SCHEMES);

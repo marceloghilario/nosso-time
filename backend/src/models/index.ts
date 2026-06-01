@@ -226,6 +226,30 @@ export interface Championship {
   updatedAt: string;
 }
 
+export type TeamRole = 'OWNER' | 'ADMIN' | 'FOLLOWER';
+
+export interface TeamMembership {
+  teamId: string;
+  userId: string;
+  role: TeamRole;
+  addedBy?: string;
+  createdAt: string;
+}
+
+export type TeamRoleRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface TeamRoleRequest {
+  requestId: string;
+  teamId: string;
+  userId: string;
+  requestedRole: 'ADMIN';
+  status: TeamRoleRequestStatus;
+  note?: string;
+  createdAt: string;
+  decidedAt?: string;
+  decidedBy?: string;
+}
+
 export interface ApiSuccess<T> {
   success: true;
   data: T;

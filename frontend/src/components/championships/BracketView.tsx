@@ -32,7 +32,7 @@ const winnerOf = (game: ChampionshipGame): 'HOME' | 'AWAY' | null => {
 const MatchCard = ({ game }: { game: ChampionshipGame }) => {
   const winner = winnerOf(game);
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm w-44 text-xs">
+    <div className="bg-slate-50 rounded-lg border border-slate-200 shadow-sm w-44 text-xs">
       <div
         className={`flex items-center justify-between gap-1 px-2 py-1.5 border-b border-gray-100 ${
           winner === 'HOME' ? 'font-bold text-gray-900' : 'text-gray-700'
@@ -98,7 +98,7 @@ export default function BracketView({ championship }: Props) {
 
   if (columns.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 text-sm text-gray-500">
+      <div className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-5 text-sm text-gray-500">
         {championship.format === 'COPA'
           ? 'O chaveamento será gerado quando a fase de grupos for concluída.'
           : 'Sem chaveamento disponível.'}

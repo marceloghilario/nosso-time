@@ -17,7 +17,7 @@ export const handler = async (
     if (!teamId || !gameId) {
       throw new HttpError('Recurso não encontrado', 404);
     }
-    await teamService.getOwnedTeam(teamId, ownerId);
+    await teamService.getManagedTeam(teamId, ownerId);
     const media = await mediaService.listByGame(teamId, gameId);
     return success(media);
   } catch (err) {

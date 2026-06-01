@@ -18,7 +18,7 @@ export const handler = async (
     if (!teamId || !gameId) {
       throw new HttpError('Recurso não encontrado', 404);
     }
-    await teamService.getOwnedTeam(teamId, ownerId);
+    await teamService.getManagedTeam(teamId, ownerId);
     const input = parseBody(UpdateGameSchema, event.body);
     const game = await gameService.update(teamId, gameId, input);
     return success(game);

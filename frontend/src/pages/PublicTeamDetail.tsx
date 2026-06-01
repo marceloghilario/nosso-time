@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, Camera, Users } from 'lucide-react';
 import { api, ApiError } from '../services/api';
@@ -9,6 +9,7 @@ import PhotoGallery from '../components/PhotoGallery';
 import TeamHero from '../components/TeamHero';
 import TabBar, { type TabItem } from '../components/TabBar';
 import TeamQuickStats from '../components/TeamQuickStats';
+import TeamFollowActions from '../components/TeamFollowActions';
 import type {
   Game,
   Media,
@@ -30,34 +31,36 @@ export default function PublicTeamDetail() {
   const [state, setState] = useState<RequestState>({ status: 'loading' });
   const [tab, setTab] = useState<Tab>('players');
 
+  const load = useCallback(
+    (signal?: { cancelled: boolean }) => {
+      api
+        .getPublicTeam(teamId)
+        .then((detail) => {
+          if (signal?.cancelled) return;
+          if (detail.myRole === 'OWNER' || detail.myRole === 'ADMIN') {
+            setState({ status: 'redirected' });
+            navigate(`/teams/${teamId}`, { replace: true });
+            return;
+          }
+          setState({ status: 'success', data: detail });
+        })
+        .catch((err: unknown) => {
+          if (signal?.cancelled) return;
+          const message =
+            err instanceof ApiError ? err.message : 'Erro ao carregar o time';
+          setState({ status: 'error', error: message });
+        });
+    },
+    [teamId, navigate],
+  );
+
   useEffect(() => {
-    let cancelled = false;
-
-    Promise.all([
-      api.getPublicTeam(teamId),
-      api.listTeams().catch(() => []),
-    ])
-      .then(([detail, myTeams]) => {
-        if (cancelled) return;
-        const isOwner = myTeams.some((t) => t.teamId === teamId);
-        if (isOwner) {
-          setState({ status: 'redirected' });
-          navigate(`/teams/${teamId}`, { replace: true });
-          return;
-        }
-        setState({ status: 'success', data: detail });
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        const message =
-          err instanceof ApiError ? err.message : 'Erro ao carregar o time';
-        setState({ status: 'error', error: message });
-      });
-
+    const signal = { cancelled: false };
+    load(signal);
     return () => {
-      cancelled = true;
+      signal.cancelled = true;
     };
-  }, [teamId, navigate]);
+  }, [load]);
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -83,6 +86,7 @@ export default function PublicTeamDetail() {
             logoUrl={state.data.team.logoUrl}
             description={state.data.team.description}
             readOnly
+            myRole={state.data.myRole ?? null}
             playerCount={
               state.data.team.playerCount ?? state.data.players.length
             }
@@ -91,6 +95,13 @@ export default function PublicTeamDetail() {
               state.data.team.photoCount ?? state.data.media.length
             }
             championshipCount={state.data.team.championshipCount}
+          />
+
+          <TeamFollowActions
+            teamId={teamId}
+            myRole={state.data.myRole ?? null}
+            pendingAdminRequest={state.data.pendingAdminRequest ?? null}
+            onChanged={() => load()}
           />
 
           {state.data.games.length > 0 && (

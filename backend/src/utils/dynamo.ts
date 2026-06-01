@@ -20,4 +20,6 @@ export const TABLES = {
   MEDIA: process.env.MEDIA_TABLE ?? '',
   FORMATIONS: process.env.FORMATIONS_TABLE ?? '',
   CHAMPIONSHIPS: process.env.CHAMPIONSHIPS_TABLE ?? '',
+  TEAM_MEMBERSHIPS: process.env.TEAM_MEMBERSHIPS_TABLE ?? '',
+  TEAM_ROLE_REQUESTS: process.env.TEAM_ROLE_REQUESTS_TABLE ?? '',
 } as const;

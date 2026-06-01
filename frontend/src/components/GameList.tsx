@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Calendar, ChevronRight, Clock, MapPin } from 'lucide-react';
+import { Calendar, ChevronRight, Clock, MapPin, Trophy } from 'lucide-react';
 import type { Game, GameStatus } from '../types';
 import { GAME_STATUS_LABELS } from '../utils/constants';
 
@@ -134,7 +134,7 @@ function ScoreBlock({
 export default function GameList({ teamId, games, readOnly }: Props) {
   if (games.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-8 text-center">
+      <div className="bg-slate-50 rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-8 text-center">
         <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
           <Calendar className="w-6 h-6 text-slate-400" />
         </div>
@@ -152,8 +152,14 @@ export default function GameList({ teamId, games, readOnly }: Props) {
             <DateTile status={game.status} date={game.date} />
             <div className="min-w-0 flex-1 flex flex-col justify-between gap-1.5 py-0.5">
               <div className="min-w-0">
-                <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
-                  Confronto
+                <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+                  <span>Confronto</span>
+                  {game.championshipRef && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-1.5 py-0.5 text-[10px] font-semibold text-primary-700 ring-1 ring-primary-200/70 normal-case tracking-normal">
+                      <Trophy className="w-3 h-3" />
+                      Campeonato
+                    </span>
+                  )}
                 </p>
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
                   vs <span className="text-slate-900">{game.opponent}</span>
@@ -196,7 +202,7 @@ export default function GameList({ teamId, games, readOnly }: Props) {
           return (
             <div
               key={game.gameId}
-              className="block bg-white rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-3 sm:p-4"
+              className="block bg-slate-50 rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-3 sm:p-4"
             >
               {body}
             </div>
@@ -206,7 +212,7 @@ export default function GameList({ teamId, games, readOnly }: Props) {
           <Link
             key={game.gameId}
             to={`/teams/${teamId}/jogos/${game.gameId}`}
-            className="group block bg-white rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-3 sm:p-4 hover:ring-primary-300 hover:shadow-md transition"
+            className="group block bg-slate-50 rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-3 sm:p-4 hover:ring-primary-300 hover:shadow-md transition"
           >
             {body}
           </Link>

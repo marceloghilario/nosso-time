@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ArrowRight,
   CalendarClock,
@@ -9,6 +10,7 @@ import {
 import type { GameResult, GameStatus } from '../types';
 
 interface MinimalGame {
+  gameId: string;
   date: string;
   time: string;
   opponent: string;
@@ -18,6 +20,8 @@ interface MinimalGame {
 
 interface Props {
   games: MinimalGame[];
+  teamId?: string;
+  readOnly?: boolean;
 }
 
 const MONTH_SHORT = [
@@ -55,6 +59,7 @@ function StatCard({
   primary,
   secondary,
   meta,
+  to,
 }: {
   tone: 'slate' | 'amber' | 'emerald' | 'primary';
   icon: ReactNode;
@@ -62,6 +67,7 @@ function StatCard({
   primary: ReactNode;
   secondary?: ReactNode;
   meta?: ReactNode;
+  to?: string;
 }) {
   const toneClasses: Record<typeof tone, { icon: string; chip: string }> = {
     slate: {
@@ -81,8 +87,12 @@ function StatCard({
       chip: 'bg-primary-50 text-primary-700 ring-primary-200/70',
     },
   };
-  return (
-    <div className="bg-white rounded-2xl ring-1 ring-slate-200/70 shadow-sm p-3 sm:p-4 flex flex-col gap-2 min-h-[88px]">
+  const baseClasses =
+    'bg-slate-50 rounded-2xl ring-1 ring-slate-200/70 shadow-sm p-3 sm:p-4 flex flex-col gap-2 min-h-[88px]';
+  const interactiveClasses =
+    'group hover:ring-primary-300 hover:shadow-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400';
+  const inner = (
+    <>
       <div className="flex items-center gap-2">
         <div
           className={`inline-flex items-center justify-center w-7 h-7 rounded-lg ${toneClasses[tone].icon}`}
@@ -107,11 +117,21 @@ function StatCard({
           <p className="text-xs text-slate-500 truncate">{secondary}</p>
         )}
       </div>
-    </div>
+    </>
   );
+  if (to) {
+    return (
+      <Link to={to} className={`${baseClasses} ${interactiveClasses}`}>
+        {inner}
+      </Link>
+    );
+  }
+  return <div className={baseClasses}>{inner}</div>;
 }
 
-export default function TeamQuickStats({ games }: Props) {
+export default function TeamQuickStats({ games, teamId, readOnly }: Props) {
+  const linkTo = (gameId: string): string | undefined =>
+    teamId && !readOnly ? `/teams/${teamId}/jogos/${gameId}` : undefined;
   const scheduled = games.filter((g) => g.status === 'AGENDADO' && g.date);
   scheduled.sort(compareAsc);
   const nextGame = scheduled[0];
@@ -163,12 +183,13 @@ export default function TeamQuickStats({ games }: Props) {
           icon={<CalendarClock className="w-4 h-4" />}
           label="Próxima partida"
           meta={nextDateLabel ?? undefined}
+          to={nextGame ? linkTo(nextGame.gameId) : undefined}
           primary={
             nextGame ? (
               <span className="inline-flex items-center gap-1">
                 vs {nextGame.opponent}
                 <ArrowRight
-                  className="w-3.5 h-3.5 text-slate-300 shrink-0"
+                  className="w-3.5 h-3.5 text-slate-300 shrink-0 group-hover:text-primary-500 transition-colors"
                   aria-hidden="true"
                 />
               </span>
@@ -191,6 +212,7 @@ export default function TeamQuickStats({ games }: Props) {
           icon={<History className="w-4 h-4" />}
           label="Último resultado"
           meta={lastGame ? lastResultLabel : undefined}
+          to={lastGame ? linkTo(lastGame.gameId) : undefined}
           primary={
             lastGame ? (
               <span className="tabular-nums font-extrabold">

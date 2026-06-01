@@ -18,7 +18,7 @@ export const handler = async (
     if (!teamId) {
       throw new HttpError('Recurso não encontrado', 404);
     }
-    const team = await teamService.getOwnedTeam(teamId, ownerId);
+    const { team, role } = await teamService.getManagedTeam(teamId, ownerId);
     const enriched = await enrichTeamWithLogoUrl(team);
     const [players, games, championshipCount] = await Promise.all([
       playerService.listByTeam(teamId),
@@ -30,6 +30,7 @@ export const handler = async (
       playerCount: players.length,
       gameCount: games.length,
       championshipCount,
+      myRole: role,
     });
   } catch (err) {
     return handleError(err);

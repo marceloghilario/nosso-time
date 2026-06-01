@@ -5,6 +5,8 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Teams from './pages/Teams';
 import CreateTeam from './pages/CreateTeam';
 import TeamDetail from './pages/TeamDetail';
@@ -35,6 +37,8 @@ export default function App() {
             <Route path="/" element={<HomeRedirect />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/esqueci-senha" element={<ForgotPassword />} />
+            <Route path="/redefinir-senha" element={<ResetPassword />} />
             <Route path="/formacoes/:shareToken" element={<PublicFormationPage />} />
 
             <Route

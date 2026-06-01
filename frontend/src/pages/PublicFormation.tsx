@@ -49,8 +49,8 @@ export default function PublicFormationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white">
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200/70">
+      <header className="border-b border-slate-200 bg-slate-50">
         <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-3">
           <Trophy className="h-5 w-5 text-emerald-600" />
           <h1 className="text-lg font-bold text-gray-900">Nosso Time</h1>
@@ -68,7 +68,7 @@ export default function PublicFormationPage() {
         )}
         {data && !loading && (
           <div className="space-y-4">
-            <div className="rounded-xl bg-white p-4 shadow-sm border border-gray-100">
+            <div className="rounded-xl bg-slate-50 p-4 shadow-sm border border-slate-200">
               <h2 className="text-xl font-bold text-gray-900">{data.teamName}</h2>
               <p className="mt-1 text-sm text-gray-600">
                 {data.name} · esquema {data.scheme}

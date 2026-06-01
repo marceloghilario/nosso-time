@@ -209,6 +209,104 @@ const generateFixtures = (
   return { games, groups };
 };
 
+/**
+ * For each game in `championship.games`, ensure that any participant team
+ * owned by `ownerId` has a linked Game row in its agenda. Creates the missing
+ * Game rows and appends them to `cg.links[]`. Mutates `championship` in place.
+ *
+ * Returns true when at least one link was added, so the caller can persist
+ * the championship document.
+ */
+const autoLinkOwnedTeamGames = async (
+  championship: Championship,
+  ownerId: string,
+): Promise<boolean> => {
+  // Collect teamIds that participate in at least one game but are not yet
+  // linked there. If everything is already linked, short-circuit and avoid
+  // the team lookups entirely.
+  const candidateTeamIds = new Set<string>();
+  for (const cg of championship.games) {
+    const linkedTeams = new Set(
+      getGameLinks(cg).map((l) => l.teamId),
+    );
+    if (cg.homeTeamId && !linkedTeams.has(cg.homeTeamId)) {
+      candidateTeamIds.add(cg.homeTeamId);
+    }
+    if (cg.awayTeamId && !linkedTeams.has(cg.awayTeamId)) {
+      candidateTeamIds.add(cg.awayTeamId);
+    }
+  }
+  if (candidateTeamIds.size === 0) return false;
+
+  const ownedTeamIds = new Set<string>();
+  for (const teamId of candidateTeamIds) {
+    const team = await teamService.getById(teamId);
+    if (team && team.ownerId === ownerId) {
+      ownedTeamIds.add(teamId);
+    }
+  }
+  if (ownedTeamIds.size === 0) return false;
+
+  let mutated = false;
+  for (const cg of championship.games) {
+    const candidates: Array<{ teamId: string; isHome: boolean }> = [];
+    if (cg.homeTeamId && ownedTeamIds.has(cg.homeTeamId)) {
+      candidates.push({ teamId: cg.homeTeamId, isHome: true });
+    }
+    if (cg.awayTeamId && ownedTeamIds.has(cg.awayTeamId)) {
+      candidates.push({ teamId: cg.awayTeamId, isHome: false });
+    }
+    if (candidates.length === 0) continue;
+
+    // Normalise legacy single-link fields into links[].
+    if (!cg.links || cg.links.length === 0) {
+      const legacy = getGameLinks(cg);
+      cg.links = legacy.length > 0 ? [...legacy] : [];
+      delete cg.linkedGameId;
+      delete cg.linkedTeamId;
+    }
+
+    for (const { teamId, isHome } of candidates) {
+      if (cg.links.some((l) => l.teamId === teamId)) continue;
+
+      const opponentName = isHome ? cg.awayTeamName : cg.homeTeamName;
+      const dateIso = cg.date ?? new Date().toISOString().slice(0, 10);
+      const timeStr = cg.time ?? '00:00';
+      const locationStr = cg.location ?? 'A definir';
+
+      let result: { scoreFor: number; scoreAgainst: number } | undefined;
+      let status: 'AGENDADO' | 'REALIZADO' = 'AGENDADO';
+      if (
+        cg.status === 'REALIZADO' &&
+        cg.homeScore !== undefined &&
+        cg.awayScore !== undefined
+      ) {
+        status = 'REALIZADO';
+        result = isHome
+          ? { scoreFor: cg.homeScore, scoreAgainst: cg.awayScore }
+          : { scoreFor: cg.awayScore, scoreAgainst: cg.homeScore };
+      }
+
+      const newGame = await gameService.create(teamId, {
+        date: dateIso,
+        time: timeStr,
+        location: locationStr,
+        opponent: opponentName ?? 'Adversário',
+        status,
+        result,
+        championshipRef: {
+          championshipId: championship.championshipId,
+          championshipGameId: cg.gameId,
+        },
+      });
+
+      cg.links.push({ teamId, gameId: newGame.gameId });
+      mutated = true;
+    }
+  }
+  return mutated;
+};
+
 export const championshipService = {
   async listByOwner(ownerId: string): Promise<Championship[]> {
     const result = await docClient.send(
@@ -264,6 +362,21 @@ export const championshipService = {
     const c = result.Item as Championship | undefined;
     if (!c || c.ownerId !== ownerId) {
       throw new HttpError('Campeonato não encontrado', 404);
+    }
+    try {
+      const mutated = await autoLinkOwnedTeamGames(c, ownerId);
+      if (mutated) {
+        c.updatedAt = new Date().toISOString();
+        await docClient.send(
+          new PutCommand({ TableName: TABLES.CHAMPIONSHIPS, Item: c }),
+        );
+      }
+    } catch (err) {
+       
+      console.error('Falha no backfill de auto-link em getOwned', {
+        championshipId,
+        error: err instanceof Error ? err.message : err,
+      });
     }
     return c;
   },
@@ -324,6 +437,23 @@ export const championshipService = {
         ConditionExpression: 'attribute_not_exists(championshipId)',
       }),
     );
+    try {
+      const mutated = await autoLinkOwnedTeamGames(championship, ownerId);
+      if (mutated) {
+        await docClient.send(
+          new PutCommand({
+            TableName: TABLES.CHAMPIONSHIPS,
+            Item: championship,
+          }),
+        );
+      }
+    } catch (err) {
+       
+      console.error('Falha ao auto-vincular jogos do campeonato aos times', {
+        championshipId: championship.championshipId,
+        error: err instanceof Error ? err.message : err,
+      });
+    }
     return championship;
   },
 
@@ -378,6 +508,8 @@ export const championshipService = {
 
   /**
    * Read a championship by id. Available to any logged-in user; no ownership check.
+   * Opportunistically runs the auto-link backfill for teams owned by the
+   * championship creator, so each fetch leaves the data set self-healed.
    */
   async getById(championshipId: string): Promise<Championship> {
     const result = await docClient.send(
@@ -388,6 +520,21 @@ export const championshipService = {
     );
     const c = result.Item as Championship | undefined;
     if (!c) throw new HttpError('Campeonato não encontrado', 404);
+    try {
+      const mutated = await autoLinkOwnedTeamGames(c, c.ownerId);
+      if (mutated) {
+        c.updatedAt = new Date().toISOString();
+        await docClient.send(
+          new PutCommand({ TableName: TABLES.CHAMPIONSHIPS, Item: c }),
+        );
+      }
+    } catch (err) {
+       
+      console.error('Falha no backfill de auto-link em getById', {
+        championshipId,
+        error: err instanceof Error ? err.message : err,
+      });
+    }
     return c;
   },
 
@@ -517,6 +664,30 @@ export const championshipService = {
         gameId,
         error: err instanceof Error ? err.message : err,
       });
+    }
+
+    // New games may have been created (advanceKnockout / group→knockout).
+    // Auto-link any participants owned by the championship creator.
+    try {
+      const mutated = await autoLinkOwnedTeamGames(championship, ownerId);
+      if (mutated) {
+        championship.updatedAt = new Date().toISOString();
+        await docClient.send(
+          new PutCommand({
+            TableName: TABLES.CHAMPIONSHIPS,
+            Item: championship,
+          }),
+        );
+      }
+    } catch (err) {
+       
+      console.error(
+        'Falha ao auto-vincular jogos do campeonato após updateGame',
+        {
+          championshipId,
+          error: err instanceof Error ? err.message : err,
+        },
+      );
     }
 
     return championship;

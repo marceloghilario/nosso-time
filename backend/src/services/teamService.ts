@@ -1,4 +1,5 @@
 import {
+  BatchGetCommand,
   GetCommand,
   PutCommand,
   QueryCommand,
@@ -12,7 +13,7 @@ import { v4 as uuid } from 'uuid';
 import { docClient, TABLES } from '../utils/dynamo';
 import { HttpError } from '../utils/response';
 import { PLAN_LIMITS } from '../models';
-import type { Team } from '../models';
+import type { Team, TeamRole } from '../models';
 
 export interface CreateTeamInput {
   name: string;
@@ -83,6 +84,17 @@ export const teamService = {
         ConditionExpression: 'attribute_not_exists(teamId)',
       }),
     );
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLES.TEAM_MEMBERSHIPS,
+        Item: {
+          teamId: team.teamId,
+          userId: ownerId,
+          role: 'OWNER',
+          createdAt: now,
+        },
+      }),
+    );
     return team;
   },
 
@@ -117,6 +129,61 @@ export const teamService = {
       throw new HttpError('Você não tem permissão para acessar este recurso', 403);
     }
     return team;
+  },
+
+  /**
+   * Resolves a team that the caller is allowed to read/manage. Accepts both
+   * OWNER and ADMIN memberships. Throws 404 when the team doesn't exist and
+   * 403 when the caller has no membership of an acceptable role.
+   */
+  async getManagedTeam(
+    teamId: string,
+    userId: string,
+    allowed: ReadonlyArray<TeamRole> = ['OWNER', 'ADMIN'],
+  ): Promise<{ team: Team; role: TeamRole }> {
+    const team = await this.getById(teamId);
+    if (!team) {
+      throw new HttpError('Recurso não encontrado', 404);
+    }
+    const { membershipService } = await import('./membershipService');
+    const role = await membershipService.getOrBackfillRole(teamId, userId);
+    if (!role) {
+      throw new HttpError(
+        'Você não tem permissão para acessar este recurso',
+        403,
+      );
+    }
+    if (!allowed.includes(role)) {
+      throw new HttpError(
+        'Você não tem permissão para esta ação',
+        403,
+      );
+    }
+    return { team, role };
+  },
+
+  async getTeamsByIds(teamIds: string[]): Promise<Team[]> {
+    if (teamIds.length === 0) return [];
+    const unique = Array.from(new Set(teamIds));
+    const chunks: string[][] = [];
+    for (let i = 0; i < unique.length; i += 100) {
+      chunks.push(unique.slice(i, i + 100));
+    }
+    const all: Team[] = [];
+    for (const chunk of chunks) {
+      const result = await docClient.send(
+        new BatchGetCommand({
+          RequestItems: {
+            [TABLES.TEAMS]: {
+              Keys: chunk.map((teamId) => ({ teamId })),
+            },
+          },
+        }),
+      );
+      const items = (result.Responses?.[TABLES.TEAMS] ?? []) as Team[];
+      all.push(...items);
+    }
+    return all;
   },
 
   async searchPublic(query: string, limit = 50): Promise<Team[]> {
@@ -162,10 +229,10 @@ export const teamService = {
 
   async update(
     teamId: string,
-    ownerId: string,
+    userId: string,
     input: UpdateTeamInput,
   ): Promise<Team> {
-    const team = await this.getOwnedTeam(teamId, ownerId);
+    const { team } = await this.getManagedTeam(teamId, userId);
     if (input.logoS3Key !== undefined) {
       ensureLogoKeyBelongsToTeam(input.logoS3Key, teamId);
     }

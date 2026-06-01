@@ -20,6 +20,8 @@ provider:
     MEDIA_TABLE: ${self:service}-media-${self:provider.stage}
     FORMATIONS_TABLE: ${self:service}-formations-${self:provider.stage}
     CHAMPIONSHIPS_TABLE: ${self:service}-championships-${self:provider.stage}
+    TEAM_MEMBERSHIPS_TABLE: ${self:service}-team-memberships-${self:provider.stage}
+    TEAM_ROLE_REQUESTS_TABLE: ${self:service}-team-role-requests-${self:provider.stage}
     PHOTOS_BUCKET: ${self:service}-photos-${self:provider.stage}-${aws:accountId}
     COGNITO_USER_POOL_ID: !Ref CognitoUserPool
     COGNITO_CLIENT_ID: !Ref CognitoUserPoolClient
@@ -50,6 +52,7 @@ provider:
         - Effect: Allow
           Action:
             - dynamodb:GetItem
+            - dynamodb:BatchGetItem
             - dynamodb:PutItem
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
@@ -64,12 +67,16 @@ provider:
             - !GetAtt MediaTable.Arn
             - !GetAtt FormationsTable.Arn
             - !GetAtt ChampionshipsTable.Arn
+            - !GetAtt TeamMembershipsTable.Arn
+            - !GetAtt TeamRoleRequestsTable.Arn
             - !Sub '${TeamsTable.Arn}/index/*'
             - !Sub '${PlayersTable.Arn}/index/*'
             - !Sub '${GamesTable.Arn}/index/*'
             - !Sub '${MediaTable.Arn}/index/*'
             - !Sub '${FormationsTable.Arn}/index/*'
             - !Sub '${ChampionshipsTable.Arn}/index/*'
+            - !Sub '${TeamMembershipsTable.Arn}/index/*'
+            - !Sub '${TeamRoleRequestsTable.Arn}/index/*'
         - Effect: Allow
           Action:
             - s3:PutObject
@@ -82,6 +89,9 @@ provider:
             - cognito-idp:InitiateAuth
             - cognito-idp:ConfirmSignUp
             - cognito-idp:AdminConfirmSignUp
+            - cognito-idp:AdminUpdateUserAttributes
+            - cognito-idp:ForgotPassword
+            - cognito-idp:ConfirmForgotPassword
           Resource: !GetAtt CognitoUserPool.Arn
 
 functions:
@@ -96,6 +106,18 @@ functions:
     events:
       - httpApi:
           path: /auth/login
+          method: post
+  forgotPassword:
+    handler: src/functions/auth/forgotPassword.handler
+    events:
+      - httpApi:
+          path: /auth/forgot-password
+          method: post
+  resetPassword:
+    handler: src/functions/auth/resetPassword.handler
+    events:
+      - httpApi:
+          path: /auth/reset-password
           method: post
 
   createTeam:
@@ -156,6 +178,80 @@ functions:
           authorizer:
             name: cognitoAuthorizer
 
+  followTeam:
+    handler: src/functions/memberships/follow.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/follow
+          method: post
+          authorizer:
+            name: cognitoAuthorizer
+  unfollowTeam:
+    handler: src/functions/memberships/unfollow.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/follow
+          method: delete
+          authorizer:
+            name: cognitoAuthorizer
+  listFollowedTeams:
+    handler: src/functions/memberships/listFollowed.handler
+    events:
+      - httpApi:
+          path: /me/followed-teams
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+  listTeamMembers:
+    handler: src/functions/memberships/listMembers.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/members
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+  removeTeamMember:
+    handler: src/functions/memberships/removeMember.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/members/{userId}
+          method: delete
+          authorizer:
+            name: cognitoAuthorizer
+
+  createAdminRequest:
+    handler: src/functions/roleRequests/create.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/admin-requests
+          method: post
+          authorizer:
+            name: cognitoAuthorizer
+  listAdminRequestsForTeam:
+    handler: src/functions/roleRequests/listForTeam.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/admin-requests
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+  decideAdminRequest:
+    handler: src/functions/roleRequests/decide.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/admin-requests/{requestId}
+          method: put
+          authorizer:
+            name: cognitoAuthorizer
+  listMyAdminRequests:
+    handler: src/functions/roleRequests/listForUser.handler
+    events:
+      - httpApi:
+          path: /me/admin-requests
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+
   createPlayer:
     handler: src/functions/players/create.handler
     events:
@@ -203,6 +299,14 @@ functions:
       - httpApi:
           path: /teams/{teamId}/games/{gameId}
           method: put
+          authorizer:
+            name: cognitoAuthorizer
+  deleteGame:
+    handler: src/functions/games/delete.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/games/{gameId}
+          method: delete
           authorizer:
             name: cognitoAuthorizer
 
@@ -505,6 +609,68 @@ resources:
             Projection:
               ProjectionType: ALL
 
+    TeamMembershipsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.TEAM_MEMBERSHIPS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: teamId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: role
+            AttributeType: S
+        KeySchema:
+          - AttributeName: teamId
+            KeyType: HASH
+          - AttributeName: userId
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: userId-role-index
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+              - AttributeName: role
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    TeamRoleRequestsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.TEAM_ROLE_REQUESTS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: requestId
+            AttributeType: S
+          - AttributeName: teamId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: status
+            AttributeType: S
+        KeySchema:
+          - AttributeName: requestId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: teamId-status-index
+            KeySchema:
+              - AttributeName: teamId
+                KeyType: HASH
+              - AttributeName: status
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: userId-status-index
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+              - AttributeName: status
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
     PhotosBucket:
       Type: AWS::S3::Bucket
       Properties:
@@ -529,6 +695,10 @@ resources:
           - email
         AutoVerifiedAttributes:
           - email
+        AccountRecoverySetting:
+          RecoveryMechanisms:
+            - Name: verified_email
+              Priority: 1
         Policies:
           PasswordPolicy:
             MinimumLength: 8
@@ -536,6 +706,33 @@ resources:
             RequireNumbers: true
             RequireSymbols: false
             RequireUppercase: true
+        VerificationMessageTemplate:
+          DefaultEmailOption: CONFIRM_WITH_CODE
+          EmailSubject: "Nosso Time — Redefinir senha"
+          EmailMessage: |
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; color: #0f172a;">
+              <h2 style="color: #0f172a; margin: 0 0 16px;">Redefinir senha do Nosso Time</h2>
+              <p style="color: #334155; line-height: 1.5; margin: 0 0 16px;">
+                Recebemos um pedido para redefinir a senha da conta <strong>{username}</strong>.
+                Clique no botão abaixo para escolher uma nova senha.
+              </p>
+              <p style="margin: 24px 0;">
+                <a href="https://dist-kwguvmym.devinapps.com/redefinir-senha?email={username}&code={####}"
+                  style="display: inline-block; padding: 12px 20px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                  Redefinir senha
+                </a>
+              </p>
+              <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin: 16px 0 0;">
+                Se o botão não funcionar, copie e cole este link no navegador:<br>
+                <span style="color: #2563eb; word-break: break-all;">https://dist-kwguvmym.devinapps.com/redefinir-senha?email={username}&amp;code={####}</span>
+              </p>
+              <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin: 16px 0 0;">
+                Código de verificação: <strong>{####}</strong>
+              </p>
+              <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 24px 0 0;">
+                O link expira em 1 hora. Se você não solicitou esta redefinição, ignore este e-mail — sua senha continua a mesma.
+              </p>
+            </div>
         Schema:
           - Name: email
             AttributeDataType: String
