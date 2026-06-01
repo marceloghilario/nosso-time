@@ -11,6 +11,7 @@ import TeamLogoUploader from '../components/TeamLogoUploader';
 import TeamHero from '../components/TeamHero';
 import TabBar, { type TabItem } from '../components/TabBar';
 import TeamQuickStats from '../components/TeamQuickStats';
+import TeamChampionshipMiniStandings from '../components/TeamChampionshipMiniStandings';
 import AdminRequestsPanel from '../components/AdminRequestsPanel';
 import type { Team } from '../types';
 
@@ -82,6 +83,10 @@ export default function TeamDetail() {
 
           {gamesReq.data && gamesReq.data.length > 0 && (
             <TeamQuickStats games={gamesReq.data} teamId={teamId} />
+          )}
+
+          {team.championshipCount !== undefined && team.championshipCount > 0 && (
+            <TeamChampionshipMiniStandings teamId={teamId} />
           )}
 
           {(() => {
