@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Camera, Plus, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Camera, Crosshair, Plus, Users } from 'lucide-react';
 import { api } from '../services/api';
 import { useApi } from '../hooks/useApi';
 import LoadingSpinner from '../components/LoadingSpinner';
 import PlayerList from '../components/PlayerList';
 import GameList from '../components/GameList';
 import PhotoGallery from '../components/PhotoGallery';
+import { MODALITY_LABELS } from '../utils/constants';
+import type { Modality } from '../types';
 
-type Tab = 'players' | 'games' | 'gallery';
+type Tab = 'players' | 'games' | 'tatica' | 'gallery';
 
 export default function TeamDetail() {
   const { teamId = '' } = useParams<{ teamId: string }>();
@@ -48,15 +50,26 @@ export default function TeamDetail() {
                   <p className="text-sm text-gray-500 mt-1">{team.description}</p>
                 )}
               </div>
-              <span
-                className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                  team.plan === 'PRO'
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                Plano {team.plan}
-              </span>
+              <div className="flex flex-col items-end gap-1">
+                <span
+                  className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                    team.plan === 'PRO'
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  Plano {team.plan}
+                </span>
+                <span
+                  className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                    (team.modality ?? 'FUTEBOL') === 'FUTSAL'
+                      ? 'bg-sky-100 text-sky-700'
+                      : 'bg-green-100 text-green-700'
+                  }`}
+                >
+                  {MODALITY_LABELS[(team.modality ?? 'FUTEBOL') as Modality]}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -73,6 +86,12 @@ export default function TeamDetail() {
                 onClick={() => setTab('games')}
                 icon={<Calendar className="w-4 h-4" />}
                 label="Jogos"
+              />
+              <TabButton
+                active={tab === 'tatica'}
+                onClick={() => setTab('tatica')}
+                icon={<Crosshair className="w-4 h-4" />}
+                label="Tática"
               />
               <TabButton
                 active={tab === 'gallery'}
@@ -106,6 +125,17 @@ export default function TeamDetail() {
                   {gamesReq.error && <ErrorBox message={gamesReq.error} />}
                   {gamesReq.data && <GameList games={gamesReq.data} />}
                 </>
+              )}
+              {tab === 'tatica' && (
+                <div className="flex justify-center">
+                  <Link
+                    to={`/teams/${teamId}/tatica`}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 transition-colors"
+                  >
+                    <Crosshair className="w-4 h-4" />
+                    Abrir quadro tático
+                  </Link>
+                </div>
               )}
               {tab === 'gallery' && (
                 <>

@@ -1,10 +1,13 @@
 export type Plan = 'FREE' | 'PRO';
 
+export type Modality = 'FUTEBOL' | 'FUTSAL';
+
 export interface Team {
   teamId: string;
   ownerId: string;
   name: string;
   description?: string;
+  modality?: Modality;
   plan: Plan;
   photoCount: number;
   createdAt: string;
@@ -17,7 +20,10 @@ export type PlayerPosition =
   | 'LATERAL'
   | 'VOLANTE'
   | 'MEIA'
-  | 'ATACANTE';
+  | 'ATACANTE'
+  | 'FIXO'
+  | 'ALA'
+  | 'PIVO';
 
 export const PLAYER_POSITIONS: PlayerPosition[] = [
   'GOLEIRO',
@@ -26,7 +32,33 @@ export const PLAYER_POSITIONS: PlayerPosition[] = [
   'VOLANTE',
   'MEIA',
   'ATACANTE',
+  'FIXO',
+  'ALA',
+  'PIVO',
 ];
+
+export const POSITIONS_BY_MODALITY: Record<Modality, PlayerPosition[]> = {
+  FUTEBOL: ['GOLEIRO', 'ZAGUEIRO', 'LATERAL', 'VOLANTE', 'MEIA', 'ATACANTE'],
+  FUTSAL: ['GOLEIRO', 'FIXO', 'ALA', 'PIVO'],
+};
+
+export type FormationScheme =
+  | '4-4-2'
+  | '4-3-3'
+  | '3-5-2'
+  | '4-2-3-1'
+  | '5-3-2'
+  | '3-4-3'
+  | '4-1-4-1'
+  | '1-2-1'
+  | '2-2'
+  | '3-1'
+  | '4-0';
+
+export const SCHEMES_BY_MODALITY: Record<Modality, FormationScheme[]> = {
+  FUTEBOL: ['4-4-2', '4-3-3', '3-5-2', '4-2-3-1', '5-3-2', '3-4-3', '4-1-4-1'],
+  FUTSAL: ['1-2-1', '2-2', '3-1', '4-0'],
+};
 
 export interface Player {
   playerId: string;

@@ -9,11 +9,12 @@ import { v4 as uuid } from 'uuid';
 import { docClient, TABLES } from '../utils/dynamo';
 import { HttpError } from '../utils/response';
 import { PLAN_LIMITS } from '../models';
-import type { Team } from '../models';
+import type { Modality, Team } from '../models';
 
 export interface CreateTeamInput {
   name: string;
   description?: string;
+  modality?: Modality;
 }
 
 export const teamService = {
@@ -24,6 +25,7 @@ export const teamService = {
       ownerId,
       name: input.name,
       description: input.description,
+      modality: input.modality ?? 'FUTEBOL',
       plan: 'FREE',
       photoCount: 0,
       createdAt: now,

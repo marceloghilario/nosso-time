@@ -6,6 +6,7 @@ import type {
   GameStatus,
   Media,
   MediaType,
+  Modality,
   Player,
   PlayerPosition,
   Team,
@@ -133,6 +134,7 @@ export interface LoginInput {
 export interface CreateTeamInput {
   name: string;
   description?: string;
+  modality?: Modality;
 }
 
 export interface CreatePlayerInput {

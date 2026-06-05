@@ -11,9 +11,12 @@ export const LoginSchema = z.object({
   password: z.string().min(1, 'Senha é obrigatória'),
 });
 
+export const ModalitySchema = z.enum(['FUTEBOL', 'FUTSAL']);
+
 export const CreateTeamSchema = z.object({
   name: z.string().min(1, 'Nome do time é obrigatório').max(100),
   description: z.string().max(500).optional(),
+  modality: ModalitySchema.optional(),
 });
 
 export const PlayerPositionSchema = z.enum([
@@ -23,6 +26,9 @@ export const PlayerPositionSchema = z.enum([
   'VOLANTE',
   'MEIA',
   'ATACANTE',
+  'FIXO',
+  'ALA',
+  'PIVO',
 ]);
 
 export const CreatePlayerSchema = z.object({

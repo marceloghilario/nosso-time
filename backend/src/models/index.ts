@@ -5,11 +5,14 @@ export const PLAN_LIMITS: Record<Plan, number> = {
   PRO: 200,
 };
 
+export type Modality = 'FUTEBOL' | 'FUTSAL';
+
 export interface Team {
   teamId: string;
   ownerId: string;
   name: string;
   description?: string;
+  modality?: Modality;
   plan: Plan;
   photoCount: number;
   createdAt: string;
@@ -22,7 +25,10 @@ export type PlayerPosition =
   | 'LATERAL'
   | 'VOLANTE'
   | 'MEIA'
-  | 'ATACANTE';
+  | 'ATACANTE'
+  | 'FIXO'
+  | 'ALA'
+  | 'PIVO';
 
 export interface Player {
   playerId: string;

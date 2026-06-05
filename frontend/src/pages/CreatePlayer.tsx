@@ -3,16 +3,23 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { api } from '../services/api';
+import { useApi } from '../hooks/useApi';
 import { useToast } from '../components/Toast';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { PLAYER_POSITIONS } from '../types';
-import type { PlayerPosition } from '../types';
+import { POSITIONS_BY_MODALITY } from '../types';
+import type { Modality, PlayerPosition } from '../types';
 import { PLAYER_POSITION_LABELS } from '../utils/constants';
 
 export default function CreatePlayer() {
   const { teamId = '' } = useParams<{ teamId: string }>();
+  const teamReq = useApi(() => api.getTeam(teamId), [teamId]);
+  const team = teamReq.data;
+
+  const modality: Modality = team?.modality ?? 'FUTEBOL';
+  const positions = POSITIONS_BY_MODALITY[modality];
+
   const [name, setName] = useState('');
-  const [position, setPosition] = useState<PlayerPosition>('ATACANTE');
+  const [position, setPosition] = useState<PlayerPosition>(positions[0]);
   const [number, setNumber] = useState('');
   const [characteristics, setCharacteristics] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -48,6 +55,10 @@ export default function CreatePlayer() {
     }
   };
 
+  if (teamReq.loading) {
+    return <LoadingSpinner label="Carregando time..." />;
+  }
+
   return (
     <div className="max-w-xl mx-auto space-y-4">
       <Link
@@ -81,7 +92,7 @@ export default function CreatePlayer() {
                 onChange={(e) => setPosition(e.target.value as PlayerPosition)}
                 className="mt-1 w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                {PLAYER_POSITIONS.map((p) => (
+                {positions.map((p) => (
                   <option key={p} value={p}>
                     {PLAYER_POSITION_LABELS[p]}
                   </option>
@@ -121,7 +132,7 @@ export default function CreatePlayer() {
             ) : (
               <>
                 <Plus className="w-4 h-4" />
-                Adicionar
+                Salvar jogador
               </>
             )}
           </button>
