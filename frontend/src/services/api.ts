@@ -14,6 +14,7 @@ import type {
   GameStatus,
   Media,
   MediaType,
+  Modality,
   Player,
   PlayerPosition,
   PublicFormationView,
@@ -156,6 +157,7 @@ export interface ResetPasswordInput {
 export interface CreateTeamInput {
   name: string;
   description?: string;
+  modality?: Modality;
 }
 
 export interface UpdateTeamInput {

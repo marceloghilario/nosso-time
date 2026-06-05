@@ -20,9 +20,10 @@ import type {
   Formation,
   FormationPlayerPosition,
   FormationScheme,
+  Modality,
   Player,
 } from '../types';
-import { FORMATION_SLOTS } from '../utils/formationSchemes';
+import { FORMATION_SLOTS, DEFAULT_SCHEME_BY_MODALITY } from '../utils/formationSchemes';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useToast } from '../components/Toast';
 import { TacticalBoard } from '../components/tactical/TacticalBoard';
@@ -36,7 +37,6 @@ import ShareButton from '../components/tactical/ShareButton';
 import ExportButton from '../components/tactical/ExportButton';
 
 const FIELD_DROPPABLE_ID = 'tactical-field';
-const DEFAULT_SCHEME: FormationScheme = '4-4-2';
 
 type SidebarTab = 'players' | 'formations';
 
@@ -136,13 +136,16 @@ export default function Tactica() {
   const { showSuccess, showError } = useToast();
 
   const [loading, setLoading] = useState(true);
-  const [team, setTeam] = useState<{ name: string } | null>(null);
+  const [team, setTeam] = useState<{ name: string; modality?: Modality } | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [formations, setFormations] = useState<Formation[]>([]);
 
-  const [scheme, setScheme] = useState<FormationScheme>(DEFAULT_SCHEME);
+  const modality: Modality = (team?.modality ?? 'FUTEBOL') as Modality;
+  const defaultScheme = DEFAULT_SCHEME_BY_MODALITY[modality];
+
+  const [scheme, setScheme] = useState<FormationScheme>(defaultScheme);
   const [slots, setSlots] = useState<FieldSlot[]>(() =>
-    buildEmptySlots(DEFAULT_SCHEME),
+    buildEmptySlots(defaultScheme),
   );
   const [currentFormation, setCurrentFormation] = useState<Formation | null>(
     null,
@@ -179,9 +182,11 @@ export default function Tactica() {
           api.listFormations(teamId),
         ]);
         if (cancelled) return;
-        setTeam({ name: teamData.name });
+        setTeam({ name: teamData.name, modality: teamData.modality });
         setPlayers(playersData);
         setFormations(formationsData);
+        const teamModality: Modality = (teamData.modality ?? 'FUTEBOL') as Modality;
+        const teamDefault = DEFAULT_SCHEME_BY_MODALITY[teamModality];
         const active = formationsData.find((f) => f.isActive) ?? null;
         if (active) {
           setCurrentFormation(active);
@@ -189,8 +194,8 @@ export default function Tactica() {
           setSlots(slotsFromFormation(active.scheme, active.playerPositions));
         } else {
           setCurrentFormation(null);
-          setScheme(DEFAULT_SCHEME);
-          setSlots(buildEmptySlots(DEFAULT_SCHEME));
+          setScheme(teamDefault);
+          setSlots(buildEmptySlots(teamDefault));
         }
       } catch (err) {
         if (cancelled) return;
@@ -503,7 +508,7 @@ export default function Tactica() {
         <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3 rounded-xl bg-slate-50 p-3 shadow-sm border border-slate-200">
-              <FormationSelector value={scheme} onChange={setSchemeAndReflow} />
+              <FormationSelector value={scheme} onChange={setSchemeAndReflow} modality={modality} />
               <button
                 type="button"
                 onClick={handleClearAll}
@@ -538,6 +543,7 @@ export default function Tactica() {
               teamName={team?.name}
               formationName={currentFormation?.name}
               scheme={scheme}
+              modality={modality}
             >
               {slots.map((slot) =>
                 slot.player ? (

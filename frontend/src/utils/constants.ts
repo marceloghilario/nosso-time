@@ -1,4 +1,4 @@
-import type { GameStatus, PlayerPosition } from '../types';
+import type { GameStatus, Modality, PlayerPosition } from '../types';
 
 export const API_URL: string = import.meta.env.VITE_API_URL ?? '';
 
@@ -11,6 +11,9 @@ export const PLAYER_POSITION_LABELS: Record<PlayerPosition, string> = {
   VOLANTE: 'Volante',
   MEIA: 'Meia',
   ATACANTE: 'Atacante',
+  FIXO: 'Fixo',
+  ALA: 'Ala',
+  PIVO: 'Pivô',
 };
 
 const PLAYER_POSITION_ORDER: Record<PlayerPosition, number> = {
@@ -20,6 +23,14 @@ const PLAYER_POSITION_ORDER: Record<PlayerPosition, number> = {
   VOLANTE: 3,
   MEIA: 4,
   ATACANTE: 5,
+  FIXO: 6,
+  ALA: 7,
+  PIVO: 8,
+};
+
+export const MODALITY_LABELS: Record<Modality, string> = {
+  FUTEBOL: 'Futebol de campo',
+  FUTSAL: 'Futsal',
 };
 
 export function comparePlayers(

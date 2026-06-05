@@ -1,13 +1,15 @@
-import { FORMATION_SCHEMES } from '../../types';
-import type { FormationScheme } from '../../types';
+import { SCHEMES_BY_MODALITY } from '../../types';
+import type { FormationScheme, Modality } from '../../types';
 
 interface Props {
   value: FormationScheme;
   onChange: (scheme: FormationScheme) => void;
   disabled?: boolean;
+  modality?: Modality;
 }
 
-export default function FormationSelector({ value, onChange, disabled }: Props) {
+export default function FormationSelector({ value, onChange, disabled, modality = 'FUTEBOL' }: Props) {
+  const schemes = SCHEMES_BY_MODALITY[modality];
   return (
     <label className="inline-flex items-center gap-2 text-sm">
       <span className="font-medium text-gray-700">Esquema</span>
@@ -17,7 +19,7 @@ export default function FormationSelector({ value, onChange, disabled }: Props) 
         disabled={disabled}
         className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60"
       >
-        {FORMATION_SCHEMES.map((s) => (
+        {schemes.map((s) => (
           <option key={s} value={s}>
             {s}
           </option>

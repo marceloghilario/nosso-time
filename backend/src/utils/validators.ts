@@ -26,9 +26,12 @@ export const ResetPasswordSchema = z.object({
   newPassword: z.string().min(8, 'Senha deve ter ao menos 8 caracteres'),
 });
 
+export const ModalitySchema = z.enum(['FUTEBOL', 'FUTSAL']);
+
 export const CreateTeamSchema = z.object({
   name: z.string().min(1, 'Nome do time é obrigatório').max(100),
   description: z.string().max(500).optional(),
+  modality: ModalitySchema.optional(),
 });
 
 export const UpdateTeamSchema = z
@@ -59,6 +62,9 @@ export const PlayerPositionSchema = z.enum([
   'VOLANTE',
   'MEIA',
   'ATACANTE',
+  'FIXO',
+  'ALA',
+  'PIVO',
 ]);
 
 export const CreatePlayerSchema = z.object({
