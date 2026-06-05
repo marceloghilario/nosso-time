@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Plus } from 'lucide-react';
@@ -22,6 +22,10 @@ export default function CreatePlayer() {
   const [submitting, setSubmitting] = useState(false);
   const { showSuccess, showError } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setPosition(availablePositions[0]);
+  }, [modality]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
