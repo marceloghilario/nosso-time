@@ -152,6 +152,14 @@ functions:
           method: put
           authorizer:
             name: cognitoAuthorizer
+  deleteTeam:
+    handler: src/functions/teams/delete.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}
+          method: delete
+          authorizer:
+            name: cognitoAuthorizer
   getTeamLogoUploadUrl:
     handler: src/functions/teams/getLogoUploadUrl.handler
     events:

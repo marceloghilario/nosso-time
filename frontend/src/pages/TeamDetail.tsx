@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Camera, LayoutGrid, Plus, Users } from 'lucide-react';
-import { api } from '../services/api';
+import { ArrowLeft, Calendar, Camera, LayoutGrid, Plus, Trash2, Users } from 'lucide-react';
+import { api, ApiError } from '../services/api';
 import { useApi } from '../hooks/useApi';
+import { useToast } from '../components/Toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import PlayerList from '../components/PlayerList';
 import GameList from '../components/GameList';
@@ -20,7 +21,10 @@ type Tab = 'players' | 'games' | 'gallery';
 export default function TeamDetail() {
   const { teamId = '' } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
+  const { showSuccess, showError } = useToast();
   const [tab, setTab] = useState<Tab>('players');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const teamReq = useApi(() => api.getTeam(teamId), [teamId]);
   const playersReq = useApi(() => api.listPlayers(teamId), [teamId]);
@@ -37,6 +41,20 @@ export default function TeamDetail() {
     setOverrideState({ teamId, team: updated });
   };
   const team = teamOverride ?? teamReq.data;
+
+  const handleDeleteTeam = async () => {
+    setDeleting(true);
+    try {
+      await api.deleteTeam(teamId);
+      showSuccess('Time excluído com sucesso');
+      navigate('/teams', { replace: true });
+    } catch (err) {
+      showError(err instanceof ApiError ? err.message : 'Erro ao excluir time');
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -166,6 +184,75 @@ export default function TeamDetail() {
               </>
             )}
           </div>
+
+          {team.myRole === 'OWNER' && (
+            <div className="border-t border-slate-200 pt-6 mt-6">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Excluir time
+              </button>
+            </div>
+          )}
+
+          {showDeleteConfirm && (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl ring-1 ring-slate-200 w-full max-w-md p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100">
+                    <Trash2 className="w-6 h-6 text-red-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Excluir time permanentemente
+                  </h3>
+                </div>
+                <div className="space-y-3 mb-6">
+                  <p className="text-sm text-slate-700 font-medium">
+                    Tem certeza que deseja excluir o time <strong>"{team.name}"</strong>?
+                  </p>
+                  <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+                    <p className="text-sm text-red-800 font-semibold">
+                      ATENÇÃO: Esta ação é irreversível!
+                    </p>
+                    <p className="text-sm text-red-700 mt-1">
+                      Ao excluir este time, você perderá <strong>permanentemente</strong> todo o histórico associado:
+                    </p>
+                    <ul className="text-sm text-red-700 mt-2 list-disc list-inside space-y-1">
+                      <li>Todos os jogadores cadastrados</li>
+                      <li>Todos os jogos e resultados</li>
+                      <li>Todas as fotos da galeria</li>
+                      <li>Todos os campeonatos</li>
+                      <li>Todas as formações táticas</li>
+                    </ul>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Nenhum dado poderá ser recuperado após a exclusão.
+                  </p>
+                </div>
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={deleting}
+                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-60"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteTeam}
+                    disabled={deleting}
+                    className="px-4 py-2 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-60"
+                  >
+                    {deleting ? 'Excluindo…' : 'Sim, excluir time e todo histórico'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

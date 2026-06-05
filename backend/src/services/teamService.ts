@@ -1,5 +1,6 @@
 import {
   BatchGetCommand,
+  DeleteCommand,
   GetCommand,
   PutCommand,
   QueryCommand,
@@ -322,6 +323,101 @@ export const teamService = {
       }
       throw err;
     }
+  },
+
+  async delete(teamId: string, ownerId: string): Promise<void> {
+    const team = await this.getOwnedTeam(teamId, ownerId);
+
+    // Delete related data: players, games, media, formations, memberships, role requests
+    const tables = [
+      { table: TABLES.PLAYERS, keyField: 'playerId', indexTeamId: true },
+      { table: TABLES.GAMES, keyField: 'gameId', indexTeamId: true },
+      { table: TABLES.MEDIA, keyField: 'mediaId', indexTeamId: true },
+      { table: TABLES.FORMATIONS, keyField: 'formationId', indexTeamId: true },
+      { table: TABLES.CHAMPIONSHIPS, keyField: 'championshipId', indexTeamId: true },
+    ];
+
+    for (const { table, keyField, indexTeamId } of tables) {
+      if (!table) continue;
+      let lastKey: Record<string, unknown> | undefined;
+      do {
+        const result = await docClient.send(
+          new QueryCommand({
+            TableName: table,
+            ...(indexTeamId
+              ? { IndexName: 'teamId-index', KeyConditionExpression: 'teamId = :tid' }
+              : { KeyConditionExpression: 'teamId = :tid' }),
+            ExpressionAttributeValues: { ':tid': teamId },
+            ExclusiveStartKey: lastKey,
+          }),
+        );
+        for (const item of result.Items ?? []) {
+          await docClient.send(
+            new DeleteCommand({
+              TableName: table,
+              Key: { [keyField]: item[keyField] as string },
+            }),
+          );
+        }
+        lastKey = result.LastEvaluatedKey;
+      } while (lastKey);
+    }
+
+    // Delete memberships (composite key: teamId + userId)
+    if (TABLES.TEAM_MEMBERSHIPS) {
+      let lastKey: Record<string, unknown> | undefined;
+      do {
+        const result = await docClient.send(
+          new QueryCommand({
+            TableName: TABLES.TEAM_MEMBERSHIPS,
+            KeyConditionExpression: 'teamId = :tid',
+            ExpressionAttributeValues: { ':tid': teamId },
+            ExclusiveStartKey: lastKey,
+          }),
+        );
+        for (const item of result.Items ?? []) {
+          await docClient.send(
+            new DeleteCommand({
+              TableName: TABLES.TEAM_MEMBERSHIPS,
+              Key: { teamId, userId: item.userId as string },
+            }),
+          );
+        }
+        lastKey = result.LastEvaluatedKey;
+      } while (lastKey);
+    }
+
+    // Delete role requests (composite key: teamId + requestId)
+    if (TABLES.TEAM_ROLE_REQUESTS) {
+      let lastKey: Record<string, unknown> | undefined;
+      do {
+        const result = await docClient.send(
+          new QueryCommand({
+            TableName: TABLES.TEAM_ROLE_REQUESTS,
+            KeyConditionExpression: 'teamId = :tid',
+            ExpressionAttributeValues: { ':tid': teamId },
+            ExclusiveStartKey: lastKey,
+          }),
+        );
+        for (const item of result.Items ?? []) {
+          await docClient.send(
+            new DeleteCommand({
+              TableName: TABLES.TEAM_ROLE_REQUESTS,
+              Key: { teamId, requestId: item.requestId as string },
+            }),
+          );
+        }
+        lastKey = result.LastEvaluatedKey;
+      } while (lastKey);
+    }
+
+    // Finally delete the team itself
+    await docClient.send(
+      new DeleteCommand({
+        TableName: TABLES.TEAMS,
+        Key: { teamId: team.teamId },
+      }),
+    );
   },
 
   async decrementPhotoCount(teamId: string): Promise<void> {

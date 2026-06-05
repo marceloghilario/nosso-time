@@ -281,6 +281,8 @@ export const api = {
   getTeam: (teamId: string) => request<Team>(`/teams/${teamId}`),
   updateTeam: (teamId: string, input: UpdateTeamInput) =>
     request<Team>(`/teams/${teamId}`, { method: 'PUT', body: input }),
+  deleteTeam: (teamId: string) =>
+    request<{ message: string }>(`/teams/${teamId}`, { method: 'DELETE' }),
   getTeamLogoUploadUrl: (teamId: string, input: LogoUploadUrlInput) =>
     request<UploadUrlResponse>(`/teams/${teamId}/logo/upload-url`, {
       method: 'POST',
