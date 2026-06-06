@@ -429,13 +429,14 @@ export const teamService = {
       } while (lastKey);
     }
 
-    // Role requests: PK teamId + SK requestId
+    // Role requests: PK requestId, GSI teamId-status-index
     if (TABLES.TEAM_ROLE_REQUESTS) {
       let lastKey: Record<string, unknown> | undefined;
       do {
         const result = await docClient.send(
           new QueryCommand({
             TableName: TABLES.TEAM_ROLE_REQUESTS,
+            IndexName: 'teamId-status-index',
             KeyConditionExpression: 'teamId = :tid',
             ExpressionAttributeValues: { ':tid': teamId },
             ExclusiveStartKey: lastKey,
@@ -445,7 +446,7 @@ export const teamService = {
           await docClient.send(
             new DeleteCommand({
               TableName: TABLES.TEAM_ROLE_REQUESTS,
-              Key: { teamId, requestId: item.requestId as string },
+              Key: { requestId: item.requestId as string },
             }),
           );
         }
