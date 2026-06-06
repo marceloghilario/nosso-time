@@ -31,7 +31,7 @@ export const TacticalBoard = forwardRef<HTMLDivElement, Props>(
     const isFutsal = modality === 'FUTSAL';
 
     return (
-      <div className="w-full">
+      <div className={`w-full ${isFutsal ? 'max-w-sm mx-auto' : ''}`}>
         {(teamName || formationName || scheme) && (
           <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
             {teamName && (
@@ -55,7 +55,7 @@ export const TacticalBoard = forwardRef<HTMLDivElement, Props>(
           ref={setRefs}
           className={`relative w-full overflow-hidden rounded-xl border-2 select-none touch-none ${
             isFutsal
-              ? 'aspect-[5/8] border-sky-700 bg-sky-600'
+              ? 'aspect-[3/4] border-sky-700 bg-sky-600'
               : 'aspect-[2/3] border-emerald-700 bg-emerald-600'
           }`}
           style={{
