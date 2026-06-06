@@ -328,26 +328,22 @@ export const teamService = {
   async delete(teamId: string, ownerId: string): Promise<void> {
     const team = await this.getOwnedTeam(teamId, ownerId);
 
-    // Delete related data: players, games, media, formations, memberships, role requests
-    const tables = [
-      { table: TABLES.PLAYERS, keyField: 'playerId', indexTeamId: true },
-      { table: TABLES.GAMES, keyField: 'gameId', indexTeamId: true },
-      { table: TABLES.MEDIA, keyField: 'mediaId', indexTeamId: true },
-      { table: TABLES.FORMATIONS, keyField: 'formationId', indexTeamId: true },
-      { table: TABLES.CHAMPIONSHIPS, keyField: 'championshipId', indexTeamId: true },
-    ];
-
-    for (const { table, keyField, indexTeamId } of tables) {
-      if (!table) continue;
+    // Helper: query by index and delete all matching items
+    const deleteByIndex = async (
+      table: string,
+      indexName: string,
+      keyCondition: string,
+      exprValues: Record<string, unknown>,
+      primaryKeyField: string,
+    ) => {
       let lastKey: Record<string, unknown> | undefined;
       do {
         const result = await docClient.send(
           new QueryCommand({
             TableName: table,
-            ...(indexTeamId
-              ? { IndexName: 'teamId-index', KeyConditionExpression: 'teamId = :tid' }
-              : { KeyConditionExpression: 'teamId = :tid' }),
-            ExpressionAttributeValues: { ':tid': teamId },
+            IndexName: indexName,
+            KeyConditionExpression: keyCondition,
+            ExpressionAttributeValues: exprValues,
             ExclusiveStartKey: lastKey,
           }),
         );
@@ -355,7 +351,53 @@ export const teamService = {
           await docClient.send(
             new DeleteCommand({
               TableName: table,
-              Key: { [keyField]: item[keyField] as string },
+              Key: { [primaryKeyField]: item[primaryKeyField] as string },
+            }),
+          );
+        }
+        lastKey = result.LastEvaluatedKey;
+      } while (lastKey);
+    };
+
+    // Players: GSI teamId-index, PK playerId
+    await deleteByIndex(
+      TABLES.PLAYERS, 'teamId-index', 'teamId = :tid', { ':tid': teamId }, 'playerId',
+    );
+
+    // Games: GSI teamId-date-index, PK gameId
+    await deleteByIndex(
+      TABLES.GAMES, 'teamId-date-index', 'teamId = :tid', { ':tid': teamId }, 'gameId',
+    );
+
+    // Media: GSI teamId-createdAt-index, PK mediaId
+    await deleteByIndex(
+      TABLES.MEDIA, 'teamId-createdAt-index', 'teamId = :tid', { ':tid': teamId }, 'mediaId',
+    );
+
+    // Formations: GSI teamId-index, PK formationId
+    await deleteByIndex(
+      TABLES.FORMATIONS, 'teamId-index', 'teamId = :tid', { ':tid': teamId }, 'formationId',
+    );
+
+    // Championships: GSI ownerId-index, PK championshipId — filter by teamId in results
+    {
+      let lastKey: Record<string, unknown> | undefined;
+      do {
+        const result = await docClient.send(
+          new QueryCommand({
+            TableName: TABLES.CHAMPIONSHIPS,
+            IndexName: 'ownerId-index',
+            KeyConditionExpression: 'ownerId = :oid',
+            FilterExpression: 'teamId = :tid',
+            ExpressionAttributeValues: { ':oid': ownerId, ':tid': teamId },
+            ExclusiveStartKey: lastKey,
+          }),
+        );
+        for (const item of result.Items ?? []) {
+          await docClient.send(
+            new DeleteCommand({
+              TableName: TABLES.CHAMPIONSHIPS,
+              Key: { championshipId: item.championshipId as string },
             }),
           );
         }
@@ -363,8 +405,8 @@ export const teamService = {
       } while (lastKey);
     }
 
-    // Delete memberships (composite key: teamId + userId)
-    if (TABLES.TEAM_MEMBERSHIPS) {
+    // Memberships: PK teamId + SK userId
+    {
       let lastKey: Record<string, unknown> | undefined;
       do {
         const result = await docClient.send(
@@ -387,7 +429,7 @@ export const teamService = {
       } while (lastKey);
     }
 
-    // Delete role requests (composite key: teamId + requestId)
+    // Role requests: PK teamId + SK requestId
     if (TABLES.TEAM_ROLE_REQUESTS) {
       let lastKey: Record<string, unknown> | undefined;
       do {
