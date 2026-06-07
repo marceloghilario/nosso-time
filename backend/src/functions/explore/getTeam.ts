@@ -11,6 +11,7 @@ import { mediaService } from '../../services/mediaService';
 import { championshipService } from '../../services/championshipService';
 import { membershipService } from '../../services/membershipService';
 import { roleRequestService } from '../../services/roleRequestService';
+import { formationService } from '../../services/formationService';
 
 export const handler = async (
   event: APIGatewayProxyEventV2WithJWTAuthorizer,
@@ -23,7 +24,7 @@ export const handler = async (
     }
     const team = await teamService.getPublicById(teamId);
     const enriched = await enrichTeamWithLogoUrl(team);
-    const [players, games, media, championshipCount, myRole, pendingRequest] =
+    const [players, games, media, championshipCount, myRole, pendingRequest, primaryFormation] =
       await Promise.all([
         playerService.listByTeam(teamId),
         gameService.listByTeam(teamId),
@@ -31,6 +32,7 @@ export const handler = async (
         championshipService.countByTeamParticipation(teamId),
         membershipService.getOrBackfillRole(teamId, userId),
         roleRequestService.findPending(teamId, userId),
+        formationService.getPrimary(teamId),
       ]);
 
     return success({
@@ -38,6 +40,7 @@ export const handler = async (
         teamId: enriched.teamId,
         name: enriched.name,
         description: enriched.description,
+        modality: enriched.modality,
         photoCount: enriched.photoCount,
         logoUrl: enriched.logoUrl,
         createdAt: enriched.createdAt,
@@ -78,6 +81,14 @@ export const handler = async (
         createdAt: m.createdAt,
         url: m.url,
       })),
+      primaryFormation: primaryFormation
+        ? {
+            formationId: primaryFormation.formationId,
+            name: primaryFormation.name,
+            scheme: primaryFormation.scheme,
+            playerPositions: primaryFormation.playerPositions,
+          }
+        : null,
     });
   } catch (err) {
     return handleError(err);

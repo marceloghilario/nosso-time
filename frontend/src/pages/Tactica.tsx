@@ -481,6 +481,16 @@ export default function Tactica() {
     }
   };
 
+  const handleSetPrimary = async (formation: Formation) => {
+    try {
+      await api.setFormationPrimary(teamId, formation.formationId);
+      await refreshFormations();
+      showSuccess(`"${formation.name}" definida como formação principal`);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao definir principal');
+    }
+  };
+
   const handleClearAll = () => {
     setSlots(buildEmptySlots(scheme));
     setSelectedSlotIndex(null);
@@ -624,6 +634,7 @@ export default function Tactica() {
                   onLoad={handleLoadFormation}
                   onRename={openRenameModal}
                   onDelete={handleDeleteFormation}
+                  onSetPrimary={handleSetPrimary}
                 />
               )}
             </div>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Calendar, Camera, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, Camera, LayoutGrid, Users } from 'lucide-react';
+import { DndContext } from '@dnd-kit/core';
 import { api, ApiError } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import PlayerList from '../components/PlayerList';
@@ -10,6 +11,8 @@ import TeamHero from '../components/TeamHero';
 import TabBar, { type TabItem } from '../components/TabBar';
 import TeamQuickStats from '../components/TeamQuickStats';
 import TeamFollowActions from '../components/TeamFollowActions';
+import { TacticalBoard } from '../components/tactical/TacticalBoard';
+import PlayerMarker from '../components/tactical/PlayerMarker';
 import type {
   Game,
   Media,
@@ -17,7 +20,7 @@ import type {
   PublicTeamDetail as PublicTeamDetailData,
 } from '../types';
 
-type Tab = 'players' | 'games' | 'gallery';
+type Tab = 'players' | 'games' | 'gallery' | 'tatica';
 
 type RequestState =
   | { status: 'loading' }
@@ -116,6 +119,15 @@ export default function PublicTeamDetail() {
                 icon: <Users className="w-4 h-4" />,
                 count: state.data.players.length,
               },
+              ...(state.data.primaryFormation
+                ? [
+                    {
+                      id: 'tatica' as const,
+                      label: 'Tática',
+                      icon: <LayoutGrid className="w-4 h-4" />,
+                    },
+                  ]
+                : []),
               {
                 id: 'games',
                 label: 'Jogos',
@@ -139,6 +151,29 @@ export default function PublicTeamDetail() {
               <PlayerList
                 players={state.data.players as unknown as Player[]}
               />
+            )}
+            {tab === 'tatica' && state.data.primaryFormation && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-slate-800">
+                    Formação Principal
+                  </h3>
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                    {state.data.primaryFormation.name} · {state.data.primaryFormation.scheme}
+                  </span>
+                </div>
+                <DndContext>
+                  <TacticalBoard modality={state.data.team.modality} droppableId="public-primary">
+                    {state.data.primaryFormation.playerPositions.map((pos) => (
+                      <PlayerMarker
+                        key={pos.playerId}
+                        position={pos}
+                        interactive={false}
+                      />
+                    ))}
+                  </TacticalBoard>
+                </DndContext>
+              </div>
             )}
             {tab === 'games' && (
               <GameList

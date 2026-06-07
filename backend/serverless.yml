@@ -391,6 +391,22 @@ functions:
           method: delete
           authorizer:
             name: cognitoAuthorizer
+  setFormationPrimary:
+    handler: src/functions/formations/setPrimary.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/formations/{formationId}/set-primary
+          method: put
+          authorizer:
+            name: cognitoAuthorizer
+  getTeamPrimaryFormation:
+    handler: src/functions/formations/getPrimary.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/primary-formation
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
   getFormationByShareToken:
     handler: src/functions/formations/getByShareToken.handler
     events:

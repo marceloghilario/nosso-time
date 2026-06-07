@@ -1,4 +1,4 @@
-import { Check, Pencil, Trash2 } from 'lucide-react';
+import { Crown, Pencil, Trash2 } from 'lucide-react';
 import type { Formation } from '../../types';
 
 interface Props {
@@ -7,6 +7,7 @@ interface Props {
   onLoad: (formation: Formation) => void;
   onRename: (formation: Formation) => void;
   onDelete: (formation: Formation) => void;
+  onSetPrimary?: (formation: Formation) => void;
 }
 
 export default function FormationList({
@@ -15,6 +16,7 @@ export default function FormationList({
   onLoad,
   onRename,
   onDelete,
+  onSetPrimary,
 }: Props) {
   if (formations.length === 0) {
     return (
@@ -44,9 +46,9 @@ export default function FormationList({
               <p className="flex items-center gap-1.5 text-sm font-medium text-gray-900 truncate">
                 {f.name}
                 {f.isActive && (
-                  <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
-                    <Check className="h-3 w-3" />
-                    Ativa
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                    <Crown className="h-3 w-3" />
+                    Principal
                   </span>
                 )}
               </p>
@@ -54,6 +56,17 @@ export default function FormationList({
                 {f.scheme} · {f.playerPositions.length} jogadores
               </p>
             </button>
+            {!f.isActive && onSetPrimary && (
+              <button
+                type="button"
+                onClick={() => onSetPrimary(f)}
+                className="rounded p-1.5 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                aria-label="Definir como principal"
+                title="Definir como principal"
+              >
+                <Crown className="h-4 w-4" />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onRename(f)}

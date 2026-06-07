@@ -249,6 +249,7 @@ export interface PublicTeam {
   teamId: string;
   name: string;
   description?: string;
+  modality?: Modality;
   photoCount: number;
   logoUrl?: string;
   createdAt: string;
@@ -285,11 +286,19 @@ export interface PublicMedia {
   url?: string;
 }
 
+export interface PublicFormationSummary {
+  formationId: string;
+  name: string;
+  scheme: FormationScheme;
+  playerPositions: FormationPlayerPosition[];
+}
+
 export interface PublicTeamDetail {
   team: PublicTeam;
   players: PublicPlayer[];
   games: PublicGame[];
   media: PublicMedia[];
+  primaryFormation?: PublicFormationSummary | null;
   /** null when the caller has no relation with the team. */
   myRole?: TeamRole | null;
   pendingAdminRequest?: PendingAdminRequestSummary | null;

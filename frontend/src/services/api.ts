@@ -410,6 +410,12 @@ export const api = {
     request<{ message: string }>(`/teams/${teamId}/formations/${formationId}`, {
       method: 'DELETE',
     }),
+  setFormationPrimary: (teamId: string, formationId: string) =>
+    request<Formation>(`/teams/${teamId}/formations/${formationId}/set-primary`, {
+      method: 'PUT',
+    }),
+  getTeamPrimaryFormation: (teamId: string) =>
+    request<Formation | null>(`/teams/${teamId}/primary-formation`),
   getPublicFormation: (shareToken: string) =>
     request<PublicFormationView>(`/formacoes/${shareToken}`, {
       auth: false,
