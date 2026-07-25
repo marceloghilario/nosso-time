@@ -156,7 +156,15 @@ export default function TeamDetail() {
                 />
                 {playersReq.loading && <LoadingSpinner label="Carregando jogadores..." />}
                 {playersReq.error && <ErrorBox message={playersReq.error} />}
-                {playersReq.data && <PlayerList players={playersReq.data} />}
+                {playersReq.data && (
+                  <PlayerList
+                    players={playersReq.data}
+                    teamId={teamId}
+                    canManage={
+                      team.myRole === 'OWNER' || team.myRole === 'ADMIN'
+                    }
+                  />
+                )}
               </>
             )}
             {tab === 'games' && (
