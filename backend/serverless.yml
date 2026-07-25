@@ -276,6 +276,22 @@ functions:
           method: get
           authorizer:
             name: cognitoAuthorizer
+  getPlayer:
+    handler: src/functions/players/get.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/players/{playerId}
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+  updatePlayer:
+    handler: src/functions/players/update.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/players/{playerId}
+          method: put
+          authorizer:
+            name: cognitoAuthorizer
 
   createGame:
     handler: src/functions/games/create.handler

@@ -291,9 +291,16 @@ export const api = {
 
   listPlayers: (teamId: string) =>
     request<Player[]>(`/teams/${teamId}/players`),
+  getPlayer: (teamId: string, playerId: string) =>
+    request<Player>(`/teams/${teamId}/players/${playerId}`),
   createPlayer: (teamId: string, input: CreatePlayerInput) =>
     request<Player>(`/teams/${teamId}/players`, {
       method: 'POST',
+      body: input,
+    }),
+  updatePlayer: (teamId: string, playerId: string, input: CreatePlayerInput) =>
+    request<Player>(`/teams/${teamId}/players/${playerId}`, {
+      method: 'PUT',
       body: input,
     }),
 
