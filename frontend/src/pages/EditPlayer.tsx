@@ -1,0 +1,184 @@
+import { useState } from 'react';
+import type { FormEvent } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Save } from 'lucide-react';
+import { api } from '../services/api';
+import { useApi } from '../hooks/useApi';
+import { useToast } from '../components/Toast';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { POSITIONS_BY_MODALITY } from '../types';
+import type { Modality, Player, PlayerPosition } from '../types';
+import { PLAYER_POSITION_LABELS } from '../utils/constants';
+
+export default function EditPlayer() {
+  const { teamId = '', playerId = '' } = useParams<{
+    teamId: string;
+    playerId: string;
+  }>();
+  const teamReq = useApi(() => api.getTeam(teamId), [teamId]);
+  const playerReq = useApi(
+    () => api.getPlayer(teamId, playerId),
+    [teamId, playerId],
+  );
+
+  const modality: Modality = (teamReq.data?.modality ?? 'FUTEBOL') as Modality;
+  const ready = Boolean(teamReq.data && playerReq.data);
+
+  return (
+    <div className="max-w-xl mx-auto space-y-4">
+      <Link
+        to={`/teams/${teamId}`}
+        className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Voltar
+      </Link>
+
+      <div className="bg-slate-50 rounded-xl shadow-sm border border-slate-200 p-6">
+        <h2 className="text-xl font-bold text-gray-900">Editar jogador</h2>
+
+        {(teamReq.loading || playerReq.loading) && (
+          <div className="mt-5">
+            <LoadingSpinner label="Carregando jogador..." />
+          </div>
+        )}
+        {(teamReq.error || playerReq.error) && (
+          <div className="mt-5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {playerReq.error ?? teamReq.error}
+          </div>
+        )}
+
+        {ready && playerReq.data && (
+          <PlayerEditForm
+            teamId={teamId}
+            playerId={playerId}
+            player={playerReq.data}
+            modality={modality}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PlayerEditForm({
+  teamId,
+  playerId,
+  player,
+  modality,
+}: {
+  teamId: string;
+  playerId: string;
+  player: Player;
+  modality: Modality;
+}) {
+  const availablePositions = POSITIONS_BY_MODALITY[modality];
+  const [name, setName] = useState(player.name);
+  const [position, setPosition] = useState<PlayerPosition>(player.position);
+  const [number, setNumber] = useState(
+    player.number !== undefined ? String(player.number) : '',
+  );
+  const [characteristics, setCharacteristics] = useState(
+    player.characteristics ?? '',
+  );
+  const [submitting, setSubmitting] = useState(false);
+  const { showSuccess, showError } = useToast();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const trimmed = number.trim();
+    let numberValue: number | undefined;
+    if (trimmed.length > 0) {
+      const parsed = Number.parseInt(trimmed, 10);
+      if (Number.isNaN(parsed) || parsed < 1 || parsed > 99) {
+        showError('Número de camisa deve ser entre 1 e 99');
+        return;
+      }
+      numberValue = parsed;
+    }
+    setSubmitting(true);
+    try {
+      await api.updatePlayer(teamId, playerId, {
+        name: name.trim(),
+        position,
+        number: numberValue,
+        characteristics: characteristics.trim() || undefined,
+      });
+      showSuccess('Jogador atualizado!');
+      navigate(`/teams/${teamId}`);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Erro ao salvar jogador');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+      <label className="block">
+        <span className="text-sm font-medium text-gray-700">Nome *</span>
+        <input
+          type="text"
+          required
+          maxLength={100}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="mt-1 w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+        />
+      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Posição *</span>
+          <select
+            value={position}
+            onChange={(e) => setPosition(e.target.value as PlayerPosition)}
+            className="mt-1 w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            {availablePositions.map((p) => (
+              <option key={p} value={p}>
+                {PLAYER_POSITION_LABELS[p]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Número</span>
+          <input
+            type="number"
+            min={1}
+            max={99}
+            value={number}
+            onChange={(e) => setNumber(e.target.value)}
+            placeholder="Opcional"
+            className="mt-1 w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+        </label>
+      </div>
+      <label className="block">
+        <span className="text-sm font-medium text-gray-700">Características</span>
+        <textarea
+          rows={3}
+          maxLength={500}
+          value={characteristics}
+          onChange={(e) => setCharacteristics(e.target.value)}
+          className="mt-1 w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+        />
+      </label>
+      <button
+        type="submit"
+        disabled={submitting || !name.trim()}
+        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+      >
+        {submitting ? (
+          <LoadingSpinner className="text-white" />
+        ) : (
+          <>
+            <Save className="w-4 h-4" />
+            Salvar alterações
+          </>
+        )}
+      </button>
+    </form>
+  );
+}
