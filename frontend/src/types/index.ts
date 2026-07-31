@@ -1,5 +1,7 @@
 export type Plan = 'FREE' | 'PRO';
 
+export type Modality = 'FUTEBOL' | 'FUTSAL';
+
 export type TeamRole = 'OWNER' | 'ADMIN' | 'FOLLOWER';
 
 export interface Team {
@@ -7,6 +9,7 @@ export interface Team {
   ownerId: string;
   name: string;
   description?: string;
+  modality?: Modality;
   logoS3Key?: string;
   logoUrl?: string;
   plan: Plan;
@@ -66,7 +69,10 @@ export type PlayerPosition =
   | 'LATERAL'
   | 'VOLANTE'
   | 'MEIA'
-  | 'ATACANTE';
+  | 'ATACANTE'
+  | 'FIXO'
+  | 'ALA'
+  | 'PIVO';
 
 export const PLAYER_POSITIONS: PlayerPosition[] = [
   'GOLEIRO',
@@ -75,7 +81,15 @@ export const PLAYER_POSITIONS: PlayerPosition[] = [
   'VOLANTE',
   'MEIA',
   'ATACANTE',
+  'FIXO',
+  'ALA',
+  'PIVO',
 ];
+
+export const POSITIONS_BY_MODALITY: Record<Modality, PlayerPosition[]> = {
+  FUTEBOL: ['GOLEIRO', 'ZAGUEIRO', 'LATERAL', 'VOLANTE', 'MEIA', 'ATACANTE'],
+  FUTSAL: ['GOLEIRO', 'FIXO', 'ALA', 'PIVO'],
+};
 
 export interface Player {
   playerId: string;
@@ -177,9 +191,18 @@ export const FORMATION_SCHEMES = [
   '5-3-2',
   '3-4-3',
   '4-1-4-1',
+  '1-2-1',
+  '2-2',
+  '3-1',
+  '4-0',
 ] as const;
 
 export type FormationScheme = (typeof FORMATION_SCHEMES)[number];
+
+export const SCHEMES_BY_MODALITY: Record<Modality, FormationScheme[]> = {
+  FUTEBOL: ['4-4-2', '4-3-3', '3-5-2', '4-2-3-1', '5-3-2', '3-4-3', '4-1-4-1'],
+  FUTSAL: ['1-2-1', '2-2', '3-1', '4-0'],
+};
 
 export interface FormationPlayerPosition {
   playerId: string;
@@ -226,6 +249,7 @@ export interface PublicTeam {
   teamId: string;
   name: string;
   description?: string;
+  modality?: Modality;
   photoCount: number;
   logoUrl?: string;
   createdAt: string;
@@ -262,11 +286,19 @@ export interface PublicMedia {
   url?: string;
 }
 
+export interface PublicFormationSummary {
+  formationId: string;
+  name: string;
+  scheme: FormationScheme;
+  playerPositions: FormationPlayerPosition[];
+}
+
 export interface PublicTeamDetail {
   team: PublicTeam;
   players: PublicPlayer[];
   games: PublicGame[];
   media: PublicMedia[];
+  primaryFormation?: PublicFormationSummary | null;
   /** null when the caller has no relation with the team. */
   myRole?: TeamRole | null;
   pendingAdminRequest?: PendingAdminRequestSummary | null;

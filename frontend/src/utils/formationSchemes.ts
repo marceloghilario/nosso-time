@@ -1,10 +1,15 @@
-import type { FormationScheme } from '../types';
+import type { FormationScheme, Modality } from '../types';
 
 export interface FormationSlot {
   role: string;
   x: number;
   y: number;
 }
+
+export const DEFAULT_SCHEME_BY_MODALITY: Record<Modality, FormationScheme> = {
+  FUTEBOL: '4-4-2',
+  FUTSAL: '1-2-1',
+};
 
 export const FORMATION_SLOTS: Record<FormationScheme, FormationSlot[]> = {
   '4-4-2': [
@@ -97,5 +102,33 @@ export const FORMATION_SLOTS: Record<FormationScheme, FormationSlot[]> = {
     { role: 'CM', x: 62, y: 42 },
     { role: 'RM', x: 82, y: 40 },
     { role: 'ST', x: 50, y: 18 },
+  ],
+  '1-2-1': [
+    { role: 'GK', x: 50, y: 88 },
+    { role: 'FIXO', x: 50, y: 70 },
+    { role: 'ALA', x: 20, y: 45 },
+    { role: 'ALA', x: 80, y: 45 },
+    { role: 'PIVO', x: 50, y: 20 },
+  ],
+  '2-2': [
+    { role: 'GK', x: 50, y: 88 },
+    { role: 'FIXO', x: 30, y: 68 },
+    { role: 'FIXO', x: 70, y: 68 },
+    { role: 'ALA', x: 30, y: 32 },
+    { role: 'ALA', x: 70, y: 32 },
+  ],
+  '3-1': [
+    { role: 'GK', x: 50, y: 88 },
+    { role: 'FIXO', x: 50, y: 68 },
+    { role: 'ALA', x: 20, y: 45 },
+    { role: 'ALA', x: 80, y: 45 },
+    { role: 'PIVO', x: 50, y: 22 },
+  ],
+  '4-0': [
+    { role: 'GK', x: 50, y: 88 },
+    { role: 'FIXO', x: 30, y: 60 },
+    { role: 'FIXO', x: 70, y: 60 },
+    { role: 'ALA', x: 30, y: 35 },
+    { role: 'ALA', x: 70, y: 35 },
   ],
 };

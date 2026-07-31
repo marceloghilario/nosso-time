@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import type { ReactNode } from 'react';
 import { useDroppable } from '@dnd-kit/core';
+import type { Modality } from '../../types';
 
 interface Props {
   children: ReactNode;
@@ -8,11 +9,12 @@ interface Props {
   teamName?: string;
   formationName?: string;
   scheme?: string;
+  modality?: Modality;
 }
 
 export const TacticalBoard = forwardRef<HTMLDivElement, Props>(
   function TacticalBoard(
-    { children, droppableId = 'field', teamName, formationName, scheme },
+    { children, droppableId = 'field', teamName, formationName, scheme, modality = 'FUTEBOL' },
     ref,
   ) {
     const { setNodeRef } = useDroppable({ id: droppableId });
@@ -26,8 +28,10 @@ export const TacticalBoard = forwardRef<HTMLDivElement, Props>(
       }
     };
 
+    const isFutsal = modality === 'FUTSAL';
+
     return (
-      <div className="w-full">
+      <div className={`w-full ${isFutsal ? 'max-w-sm mx-auto' : ''}`}>
         {(teamName || formationName || scheme) && (
           <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
             {teamName && (
@@ -37,7 +41,11 @@ export const TacticalBoard = forwardRef<HTMLDivElement, Props>(
               <span className="text-gray-600">— {formationName}</span>
             )}
             {scheme && (
-              <span className="ml-auto rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+              <span className={`ml-auto rounded-full px-2 py-0.5 text-xs font-semibold ${
+                isFutsal
+                  ? 'bg-sky-100 text-sky-800'
+                  : 'bg-emerald-100 text-emerald-800'
+              }`}>
                 {scheme}
               </span>
             )}
@@ -45,13 +53,18 @@ export const TacticalBoard = forwardRef<HTMLDivElement, Props>(
         )}
         <div
           ref={setRefs}
-          className="relative w-full aspect-[2/3] overflow-hidden rounded-xl border-2 border-emerald-700 bg-emerald-600 select-none touch-none"
+          className={`relative w-full overflow-hidden rounded-xl border-2 select-none touch-none ${
+            isFutsal
+              ? 'aspect-[3/4] border-sky-700 bg-sky-600'
+              : 'aspect-[2/3] border-emerald-700 bg-emerald-600'
+          }`}
           style={{
-            backgroundImage:
-              'repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0 30px, rgba(255,255,255,0.0) 30px 60px)',
+            backgroundImage: isFutsal
+              ? 'repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0 25px, rgba(255,255,255,0.0) 25px 50px)'
+              : 'repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0 30px, rgba(255,255,255,0.0) 30px 60px)',
           }}
         >
-          <FieldLines />
+          {isFutsal ? <FutsalCourtLines /> : <FieldLines />}
           {children}
         </div>
       </div>
@@ -124,6 +137,59 @@ function FieldLines() {
         strokeWidth="0.4"
       />
       <circle cx="50" cy="138" r="0.6" fill="white" />
+    </svg>
+  );
+}
+
+function FutsalCourtLines() {
+  return (
+    <svg
+      viewBox="0 0 100 160"
+      preserveAspectRatio="none"
+      className="absolute inset-0 h-full w-full"
+      aria-hidden
+    >
+      <rect
+        x="3"
+        y="3"
+        width="94"
+        height="154"
+        rx="2"
+        fill="none"
+        stroke="white"
+        strokeWidth="0.5"
+      />
+      <line x1="3" y1="80" x2="97" y2="80" stroke="white" strokeWidth="0.4" />
+      <circle
+        cx="50"
+        cy="80"
+        r="8"
+        fill="none"
+        stroke="white"
+        strokeWidth="0.4"
+      />
+      <circle cx="50" cy="80" r="0.6" fill="white" />
+      {/* Top penalty area (semicircle) */}
+      <path
+        d="M 30 3 A 20 20 0 0 1 70 3"
+        fill="none"
+        stroke="white"
+        strokeWidth="0.4"
+      />
+      <circle cx="50" cy="16" r="0.5" fill="white" />
+      {/* Bottom penalty area (semicircle) */}
+      <path
+        d="M 30 157 A 20 20 0 0 0 70 157"
+        fill="none"
+        stroke="white"
+        strokeWidth="0.4"
+      />
+      <circle cx="50" cy="144" r="0.5" fill="white" />
+      {/* Corner arcs */}
+      <path d="M 3 6 A 3 3 0 0 1 6 3" fill="none" stroke="white" strokeWidth="0.3" />
+      <path d="M 94 3 A 3 3 0 0 1 97 6" fill="none" stroke="white" strokeWidth="0.3" />
+      <path d="M 6 157 A 3 3 0 0 1 3 154" fill="none" stroke="white" strokeWidth="0.3" />
+      <path d="M 97 154 A 3 3 0 0 1 94 157" fill="none" stroke="white" strokeWidth="0.3" />
     </svg>
   );
 }

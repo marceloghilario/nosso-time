@@ -5,11 +5,14 @@ export const PLAN_LIMITS: Record<Plan, number> = {
   PRO: 200,
 };
 
+export type Modality = 'FUTEBOL' | 'FUTSAL';
+
 export interface Team {
   teamId: string;
   ownerId: string;
   name: string;
   description?: string;
+  modality?: Modality;
   logoS3Key?: string;
   plan: Plan;
   photoCount: number;
@@ -23,7 +26,10 @@ export type PlayerPosition =
   | 'LATERAL'
   | 'VOLANTE'
   | 'MEIA'
-  | 'ATACANTE';
+  | 'ATACANTE'
+  | 'FIXO'
+  | 'ALA'
+  | 'PIVO';
 
 export interface Player {
   playerId: string;
@@ -112,6 +118,10 @@ export const FORMATION_SCHEMES = [
   '5-3-2',
   '3-4-3',
   '4-1-4-1',
+  '1-2-1',
+  '2-2',
+  '3-1',
+  '4-0',
 ] as const;
 
 export type FormationScheme = (typeof FORMATION_SCHEMES)[number];

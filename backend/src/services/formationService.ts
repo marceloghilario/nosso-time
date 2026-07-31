@@ -156,13 +156,19 @@ export const formationService = {
     const players = await playerService.listByTeam(team.teamId);
     const enriched = enrichPositions(input.playerPositions, players);
     const now = new Date().toISOString();
+
+    // Auto-set as primary if it's the first formation for this team
+    const existing = await this.listByTeam(team.teamId);
+    const shouldBeActive =
+      existing.length === 0 ? true : input.isActive === true;
+
     const formation: Formation = {
       formationId: uuid(),
       teamId: team.teamId,
       teamName: team.name,
       name: input.name,
       scheme: input.scheme,
-      isActive: input.isActive === true,
+      isActive: shouldBeActive,
       playerPositions: enriched,
       shareToken: generateShareToken(),
       createdAt: now,
@@ -233,5 +239,38 @@ export const formationService = {
         Key: { formationId },
       }),
     );
+
+    // If we deleted the primary, promote the oldest remaining
+    if (existing.isActive) {
+      const remaining = await this.listByTeam(team.teamId);
+      if (remaining.length > 0) {
+        const oldest = remaining.sort(
+          (a, b) => a.createdAt.localeCompare(b.createdAt),
+        )[0];
+        await this.setPrimary(team.teamId, oldest.formationId);
+      }
+    }
+  },
+
+  async setPrimary(teamId: string, formationId: string): Promise<Formation> {
+    const formation = await this.getById(formationId);
+    if (!formation || formation.teamId !== teamId) {
+      throw new HttpError('Recurso não encontrado', 404);
+    }
+    const now = new Date().toISOString();
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLES.FORMATIONS,
+        Key: { formationId },
+        UpdateExpression: 'SET isActive = :true, updatedAt = :now',
+        ExpressionAttributeValues: { ':true': true, ':now': now },
+      }),
+    );
+    await deactivateOthers(teamId, formationId);
+    return { ...formation, isActive: true, updatedAt: now };
+  },
+
+  async getPrimary(teamId: string): Promise<Formation | null> {
+    return this.getActive(teamId);
   },
 };

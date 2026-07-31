@@ -152,6 +152,14 @@ functions:
           method: put
           authorizer:
             name: cognitoAuthorizer
+  deleteTeam:
+    handler: src/functions/teams/delete.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}
+          method: delete
+          authorizer:
+            name: cognitoAuthorizer
   getTeamLogoUploadUrl:
     handler: src/functions/teams/getLogoUploadUrl.handler
     events:
@@ -268,6 +276,22 @@ functions:
           method: get
           authorizer:
             name: cognitoAuthorizer
+  getPlayer:
+    handler: src/functions/players/get.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/players/{playerId}
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+  updatePlayer:
+    handler: src/functions/players/update.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/players/{playerId}
+          method: put
+          authorizer:
+            name: cognitoAuthorizer
 
   createGame:
     handler: src/functions/games/create.handler
@@ -381,6 +405,22 @@ functions:
       - httpApi:
           path: /teams/{teamId}/formations/{formationId}
           method: delete
+          authorizer:
+            name: cognitoAuthorizer
+  setFormationPrimary:
+    handler: src/functions/formations/setPrimary.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/formations/{formationId}/set-primary
+          method: put
+          authorizer:
+            name: cognitoAuthorizer
+  getTeamPrimaryFormation:
+    handler: src/functions/formations/getPrimary.handler
+    events:
+      - httpApi:
+          path: /teams/{teamId}/primary-formation
+          method: get
           authorizer:
             name: cognitoAuthorizer
   getFormationByShareToken:

@@ -14,6 +14,7 @@ import type {
   GameStatus,
   Media,
   MediaType,
+  Modality,
   Player,
   PlayerPosition,
   PublicFormationView,
@@ -156,6 +157,7 @@ export interface ResetPasswordInput {
 export interface CreateTeamInput {
   name: string;
   description?: string;
+  modality?: Modality;
 }
 
 export interface UpdateTeamInput {
@@ -279,6 +281,8 @@ export const api = {
   getTeam: (teamId: string) => request<Team>(`/teams/${teamId}`),
   updateTeam: (teamId: string, input: UpdateTeamInput) =>
     request<Team>(`/teams/${teamId}`, { method: 'PUT', body: input }),
+  deleteTeam: (teamId: string) =>
+    request<{ message: string }>(`/teams/${teamId}`, { method: 'DELETE' }),
   getTeamLogoUploadUrl: (teamId: string, input: LogoUploadUrlInput) =>
     request<UploadUrlResponse>(`/teams/${teamId}/logo/upload-url`, {
       method: 'POST',
@@ -287,9 +291,16 @@ export const api = {
 
   listPlayers: (teamId: string) =>
     request<Player[]>(`/teams/${teamId}/players`),
+  getPlayer: (teamId: string, playerId: string) =>
+    request<Player>(`/teams/${teamId}/players/${playerId}`),
   createPlayer: (teamId: string, input: CreatePlayerInput) =>
     request<Player>(`/teams/${teamId}/players`, {
       method: 'POST',
+      body: input,
+    }),
+  updatePlayer: (teamId: string, playerId: string, input: CreatePlayerInput) =>
+    request<Player>(`/teams/${teamId}/players/${playerId}`, {
+      method: 'PUT',
       body: input,
     }),
 
@@ -406,6 +417,12 @@ export const api = {
     request<{ message: string }>(`/teams/${teamId}/formations/${formationId}`, {
       method: 'DELETE',
     }),
+  setFormationPrimary: (teamId: string, formationId: string) =>
+    request<Formation>(`/teams/${teamId}/formations/${formationId}/set-primary`, {
+      method: 'PUT',
+    }),
+  getTeamPrimaryFormation: (teamId: string) =>
+    request<Formation | null>(`/teams/${teamId}/primary-formation`),
   getPublicFormation: (shareToken: string) =>
     request<PublicFormationView>(`/formacoes/${shareToken}`, {
       auth: false,

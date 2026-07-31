@@ -1,12 +1,15 @@
-import { Hash, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Hash, Pencil, User } from 'lucide-react';
 import type { Player } from '../types';
 import { PLAYER_POSITION_LABELS, comparePlayers } from '../utils/constants';
 
 interface Props {
   players: Player[];
+  teamId?: string;
+  canManage?: boolean;
 }
 
-export default function PlayerList({ players }: Props) {
+export default function PlayerList({ players, teamId, canManage = false }: Props) {
   if (players.length === 0) {
     return (
       <div className="bg-slate-50 rounded-2xl shadow-sm ring-1 ring-slate-200/70 p-8 text-center">
@@ -45,6 +48,16 @@ export default function PlayerList({ players }: Props) {
                 {player.characteristics ? ` · ${player.characteristics}` : ''}
               </p>
             </div>
+            {canManage && teamId && (
+              <Link
+                to={`/teams/${teamId}/jogadores/${player.playerId}/editar`}
+                aria-label={`Editar ${player.name}`}
+                title="Editar jogador"
+                className="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full text-slate-500 hover:text-primary-700 hover:bg-primary-50 transition-colors"
+              >
+                <Pencil className="w-4 h-4" />
+              </Link>
+            )}
           </li>
         ))}
       </ul>

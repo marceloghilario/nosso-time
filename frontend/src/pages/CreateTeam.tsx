@@ -5,10 +5,12 @@ import { ArrowLeft, Plus } from 'lucide-react';
 import { api } from '../services/api';
 import { useToast } from '../components/Toast';
 import LoadingSpinner from '../components/LoadingSpinner';
+import type { Modality } from '../types';
 
 export default function CreateTeam() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [modality, setModality] = useState<Modality>('FUTEBOL');
   const [submitting, setSubmitting] = useState(false);
   const { showSuccess, showError } = useToast();
   const navigate = useNavigate();
@@ -20,6 +22,7 @@ export default function CreateTeam() {
       const team = await api.createTeam({
         name: name.trim(),
         description: description.trim() || undefined,
+        modality,
       });
       showSuccess('Time criado com sucesso!');
       navigate(`/teams/${team.teamId}`, { replace: true });
@@ -47,6 +50,49 @@ export default function CreateTeam() {
         </p>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+          <fieldset>
+            <legend className="text-sm font-medium text-gray-700 mb-2">Modalidade</legend>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setModality('FUTEBOL')}
+                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                  modality === 'FUTEBOL'
+                    ? 'border-green-500 bg-green-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <svg viewBox="0 0 40 60" className="w-8 h-12">
+                  <rect x="2" y="2" width="36" height="56" fill="#22c55e" stroke="#166534" strokeWidth="2" rx="1" />
+                  <line x1="2" y1="30" x2="38" y2="30" stroke="white" strokeWidth="1" />
+                  <circle cx="20" cy="30" r="6" fill="none" stroke="white" strokeWidth="1" />
+                  <rect x="10" y="2" width="20" height="10" fill="none" stroke="white" strokeWidth="1" />
+                  <rect x="10" y="48" width="20" height="10" fill="none" stroke="white" strokeWidth="1" />
+                </svg>
+                <span className="text-sm font-medium text-gray-800">Futebol de campo</span>
+                <span className="text-xs text-gray-500">11 jogadores</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setModality('FUTSAL')}
+                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                  modality === 'FUTSAL'
+                    ? 'border-sky-500 bg-sky-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <svg viewBox="0 0 50 80" className="w-8 h-12">
+                  <rect x="2" y="2" width="46" height="76" fill="#0ea5e9" stroke="#0369a1" strokeWidth="2" rx="3" />
+                  <line x1="2" y1="40" x2="48" y2="40" stroke="white" strokeWidth="1" />
+                  <circle cx="25" cy="40" r="6" fill="none" stroke="white" strokeWidth="1" />
+                  <path d="M 15 2 A 10 10 0 0 1 35 2" fill="none" stroke="white" strokeWidth="1" />
+                  <path d="M 15 78 A 10 10 0 0 0 35 78" fill="none" stroke="white" strokeWidth="1" />
+                </svg>
+                <span className="text-sm font-medium text-gray-800">Futsal</span>
+                <span className="text-xs text-gray-500">5 jogadores</span>
+              </button>
+            </div>
+          </fieldset>
           <label className="block">
             <span className="text-sm font-medium text-gray-700">Nome *</span>
             <input
